@@ -17,24 +17,23 @@ export const router = createBrowserRouter([
   path: '/',
   element: <AppLayoutAdmin />, 
   children: [
-    { index: true, element: <Home /> }, // Use 'index: true' em vez de path: '/'
-     {path:'dashboard', element:<LocaTechDashboard></LocaTechDashboard>},
-     {path:'perfil', element:<PerfilPage></PerfilPage>},
+    {path:'', element:<LocaTechDashboard></LocaTechDashboard>},
+    {path:'dashboard', element:<LocaTechDashboard></LocaTechDashboard>},
+    {path:'perfil', element:<PerfilPage></PerfilPage>},
     {
   path: '/detail/:id', // O ':' indica que o ID é dinâmico
   element: <DefinicoesDashPage />, 
 },
-     {path:'notificacoes', element:<NotificacoesPage></NotificacoesPage>}
+{path:'notificacoes', element:<NotificacoesPage></NotificacoesPage>}
   ],
 },
-  {
+{
     path: '/auth',
     element: <AuthLayoutPacient />, // Layout com fundo de posto e vidro
     children: [
+      { index: true, element: <Home /> }, // Use 'index: true' em vez de path: '/'
       { path: 'select-type', element: <SelectAccountType /> }, 
       { path: 'sign-up-gestor', element: <SignUpGestor /> },
-      
-      // Novas rotas de feedback
       { path: 'success', element: <SuccessAccount /> }, // Imagem 4
       { path: 'error', element: <ErrorAccount /> },     // Imagem 5
     ],
