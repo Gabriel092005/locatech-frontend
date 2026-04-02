@@ -2,8 +2,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'https://quintal-backend-224.onrender.com',      
-//   baseURL: 'http://localhost"3333',
+  // baseURL: 'https://quintal-backend-224.onrender.com',      
+  baseURL: 'http://localhost:3001',
   withCredentials: true
 });
 
