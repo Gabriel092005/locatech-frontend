@@ -1,7 +1,24 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, ChangeEvent } from "react";
+import { api } from "@/lib/axios";
 
-// ── Icon ─────────────────────────────────────────────────────────────────────
-function IUser({ className = "w-16 h-16" }: { className?: string }) {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface UserMe {
+  id: number;
+  nome: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  image_path: string | null;
+  isAlive: boolean;
+  created_at: string;
+}
+
+type UpdateStatus = "idle" | "loading" | "success" | "error";
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function IUser({ className = "w-12 h-12" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <circle cx="12" cy="8" r="4" />
@@ -9,137 +26,423 @@ function IUser({ className = "w-16 h-16" }: { className?: string }) {
     </svg>
   );
 }
+function ISpinner({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
+    </svg>
+  );
+}
+function ICheck({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+function ILogout({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+function ICamera({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+function ITrash({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4h6v2" />
+    </svg>
+  );
+}
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function avatarUrl(path: string | null): string | null {
+  if (!path) return null;
+  // Se já é uma URL completa, usa directo; senão monta com a base da API
+  if (path.startsWith("http")) return path;
+  const base = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:3001";
+  return `${base}/${path.replace(/^\//, "")}`;
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-slate-300/60 rounded-xl ${className}`} />;
+}
+
+// ── Confirm Dialog ────────────────────────────────────────────────────────────
+
+function ConfirmDialog({
+  message,
+  onConfirm,
+  onCancel,
+  danger = false,
+}: {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-10 bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+        <p className="text-slate-800 font-semibold text-sm leading-relaxed mb-5">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm font-semibold hover:bg-slate-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all active:scale-95 ${
+              danger ? "bg-red-500 hover:bg-red-600" : "bg-[#0d1b3e] hover:bg-[#162251]"
+            }`}
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function Toast({ message, type }: { message: string; type: "success" | "error" }) {
+  return (
+    <div
+      className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2 animate-bounce-once ${
+        type === "success"
+          ? "bg-green-500 text-white"
+          : "bg-red-500 text-white"
+      }`}
+    >
+      {type === "success" ? <ICheck className="w-4 h-4" /> : null}
+      {message}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function PerfilPage() {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [user, setUser]               = useState<UserMe | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const [preview, setPreview]         = useState<string | null>(null);
+  const [avatarFile, setAvatarFile]   = useState<File | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<UpdateStatus>("idle");
 
   const [form, setForm] = useState({
     nome: "",
     email: "",
-    contactos: "",
+    phone: "",
     password: "",
   });
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [toast, setToast]               = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const [confirmLogout, setConfirmLogout]   = useState(false);
+  const [confirmDelete, setConfirmDelete]   = useState(false);
+
+  // ── Fetch /me ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchMe() {
+      try {
+        const { data } = await api.get<UserMe>("/me");
+        setUser(data);
+        setForm({
+          nome:     data.nome     ?? "",
+          email:    data.email    ?? "",
+          phone:    data.phone    ?? "",
+          password: "",
+        });
+      } catch (err) {
+        console.error("Erro ao carregar perfil:", err);
+      } finally {
+        setLoadingUser(false);
+      }
+    }
+    fetchMe();
+  }, []);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  // ── Avatar ─────────────────────────────────────────────────────────────────
+  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) setPreview(URL.createObjectURL(file));
+    if (!file) return;
+    setAvatarFile(file);
+    setPreview(URL.createObjectURL(file));
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  async function handleAvatarUpload() {
+    if (!avatarFile) return;
+    setAvatarStatus("loading");
+    try {
+      const body = new FormData();
+      body.append("image", avatarFile);
+      const { data } = await api.patch<{ image_path: string }>("/me/avatar", body, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setUser((prev) => prev ? { ...prev, image_path: data.image_path } : prev);
+      setAvatarFile(null);
+      setAvatarStatus("success");
+      showToast("Foto actualizada com sucesso!", "success");
+    } catch (err: any) {
+      setAvatarStatus("error");
+      showToast(err?.response?.data?.message ?? "Erro ao actualizar foto.", "error");
+    } finally {
+      setTimeout(() => setAvatarStatus("idle"), 2000);
+    }
   }
 
+  // ── Update info ────────────────────────────────────────────────────────────
+  async function handleUpdate() {
+    setUpdateStatus("loading");
+    try {
+      const payload: Record<string, string> = {};
+      if (form.nome.trim()  && form.nome  !== user?.nome)  payload.nome  = form.nome.trim();
+      if (form.email.trim() && form.email !== user?.email) payload.email = form.email.trim();
+      if (form.phone.trim() && form.phone !== user?.phone) payload.phone = form.phone.trim();
+      if (form.password.trim()) payload.password = form.password.trim();
+
+      const { data } = await api.put<UserMe>("/me", payload);
+      setUser(data);
+      setForm((prev) => ({ ...prev, password: "" }));
+      setUpdateStatus("success");
+      showToast("Informações actualizadas!", "success");
+    } catch (err: any) {
+      setUpdateStatus("error");
+      showToast(err?.response?.data?.message ?? "Erro ao actualizar.", "error");
+    } finally {
+      setTimeout(() => setUpdateStatus("idle"), 2000);
+    }
+  }
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  async function handleLogout() {
+    try {
+      await api.post("/auth/logout").catch(() => {}); // best-effort
+    } finally {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+  }
+
+  // ── Delete account ─────────────────────────────────────────────────────────
+  async function handleDeleteAccount() {
+    try {
+      await api.delete("/me");
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    } catch (err: any) {
+      showToast(err?.response?.data?.message ?? "Erro ao excluir conta.", "error");
+    }
+  }
+
+  // ── Avatar src ─────────────────────────────────────────────────────────────
+  const imgSrc = preview ?? avatarUrl(user?.image_path ?? null);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-full bg-[#edf0f4] flex flex-col">
 
-      {/* ── Sair da conta ── */}
+      {/* Header actions */}
       <div className="flex justify-end px-8 pt-6">
         <button
-          className="bg-red-500 hover:bg-red-600 active:scale-95 text-white
-                     font-bold text-[13px] px-6 py-2.5 rounded-full
-                     shadow-md shadow-red-500/30 transition-all duration-150
-                     hover:-translate-y-0.5"
+          onClick={() => setConfirmLogout(true)}
+          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 active:scale-95
+                     text-white font-bold text-[13px] px-5 py-2.5 rounded-full
+                     shadow-md shadow-red-500/30 transition-all hover:-translate-y-0.5"
         >
-          Sair da conta
+          <ILogout /> Sair da conta
         </button>
       </div>
 
-      {/* ── Content ── */}
       <div className="flex-1 px-8 pb-8 pt-4 flex flex-col gap-5">
 
-        {/* Card – Foto ── */}
+        {/* Card – Avatar */}
         <div className="bg-[#dde1e7] rounded-2xl px-8 py-6 flex items-center gap-6 shadow-sm">
-          {/* Avatar */}
-          <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center
-                          overflow-hidden shrink-0 text-white">
-            {preview
-              ? <img src={preview} alt="avatar" className="w-full h-full object-cover" />
-              : <IUser className="w-12 h-12" />
+          {/* Avatar circle */}
+          <div className="relative w-20 h-20 shrink-0 group">
+            <div className="w-20 h-20 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-white">
+              {imgSrc
+                ? <img src={imgSrc} alt="avatar" className="w-full h-full object-cover" />
+                : loadingUser
+                  ? <div className="w-full h-full animate-pulse bg-slate-600 rounded-full" />
+                  : <IUser />
+              }
+            </div>
+            {/* Overlay on hover */}
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+            >
+              <ICamera className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Name or skeleton */}
+          <div className="flex-1 min-w-0">
+            {loadingUser
+              ? <Skeleton className="h-5 w-40 mb-2" />
+              : <span className="font-black text-xl text-slate-900 tracking-tight block truncate">{user?.nome}</span>
+            }
+            {loadingUser
+              ? <Skeleton className="h-3 w-28" />
+              : <span className="text-xs text-slate-400 font-medium">{user?.role}</span>
             }
           </div>
 
-          <span className="font-black text-xl text-slate-900 tracking-tight flex-1">
-            Atualizar uma Nova Foto
-          </span>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFile}
-          />
           <button
-            onClick={() => fileRef.current?.click()}
-            className="bg-[#0d1b3e] hover:bg-[#162251] text-white font-bold text-[13px]
-                       px-7 py-2.5 rounded-xl transition-all duration-150
-                       hover:-translate-y-0.5 active:scale-95 shadow-md"
+            onClick={avatarFile ? handleAvatarUpload : () => fileRef.current?.click()}
+            disabled={avatarStatus === "loading"}
+            className="bg-[#0d1b3e] hover:bg-[#162251] disabled:opacity-60 text-white font-bold
+                       text-[13px] px-6 py-2.5 rounded-xl transition-all hover:-translate-y-0.5
+                       active:scale-95 shadow-md flex items-center gap-2 shrink-0"
           >
-            Actualizar
+            {avatarStatus === "loading" ? <><ISpinner /> A enviar…</> :
+             avatarStatus === "success" ? <><ICheck /> Guardado!</> :
+             avatarFile ? <><ICheck className="w-3.5 h-3.5" /> Confirmar</> :
+             <><ICamera className="w-3.5 h-3.5" /> Actualizar</>}
           </button>
         </div>
 
-        {/* Card – Formulário ── */}
+        {/* Card – Form */}
         <div className="bg-[#dde1e7] rounded-2xl px-10 py-8 shadow-sm flex flex-col gap-6">
           <h2 className="font-black text-[20px] text-slate-900 tracking-tight text-center">
-            Trocar as informações do usuário aqui:
+            Trocar as informações do utilizador
           </h2>
 
-          {/* Grid de inputs */}
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { name: "nome",      placeholder: "Nome Completo" },
-              { name: "email",     placeholder: "E-mail"        },
-              { name: "contactos", placeholder: "Contactos"     },
-              { name: "password",  placeholder: "Palavra-Passe", type: "password" },
-            ].map(({ name, placeholder, type = "text" }) => (
-              <input
-                key={name}
-                name={name}
-                type={type}
-                placeholder={placeholder}
-                value={form[name as keyof typeof form]}
-                onChange={handleChange}
-                className="bg-white border border-slate-200 rounded-xl px-4 py-3
-                           text-[13.5px] text-slate-700 placeholder-slate-400
-                           outline-none focus:border-[#0d1b3e] focus:ring-2
-                           focus:ring-[#0d1b3e]/10 transition-all duration-150"
-              />
-            ))}
-          </div>
+          {loadingUser ? (
+            <div className="grid grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { name: "nome",     placeholder: "Nome Completo",  type: "text"     },
+                { name: "email",    placeholder: "E-mail",         type: "email"    },
+                { name: "phone",    placeholder: "Contacto",       type: "tel"      },
+                { name: "password", placeholder: "Nova Palavra-Passe", type: "password" },
+              ].map(({ name, placeholder, type }) => (
+                <input
+                  key={name}
+                  name={name}
+                  type={type}
+                  placeholder={placeholder}
+                  value={form[name as keyof typeof form]}
+                  onChange={handleChange}
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-3
+                             text-[13.5px] text-slate-700 placeholder-slate-400
+                             outline-none focus:border-[#0d1b3e] focus:ring-2
+                             focus:ring-[#0d1b3e]/10 transition-all"
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Actualizar */}
+          {/* Metadata row */}
+          {!loadingUser && user && (
+            <div className="flex items-center gap-6 text-[11px] text-slate-400 font-medium -mt-2">
+              <span>ID: <strong className="text-slate-600">#{user.id}</strong></span>
+              <span>Membro desde: <strong className="text-slate-600">{new Date(user.created_at).toLocaleDateString("pt-AO", { day: "2-digit", month: "short", year: "numeric" })}</strong></span>
+              <span className="flex items-center gap-1">
+                Estado:
+                <span className={`w-1.5 h-1.5 rounded-full inline-block ${user.isAlive ? "bg-green-500" : "bg-red-400"}`} />
+                <strong className={user.isAlive ? "text-green-600" : "text-red-500"}>{user.isAlive ? "Activo" : "Inactivo"}</strong>
+              </span>
+            </div>
+          )}
+
+          {/* Update button */}
           <button
-            className="w-full bg-[#2d3d6b] hover:bg-[#354880] text-white/80 hover:text-white
-                       font-semibold text-[14px] py-3.5 rounded-xl
-                       transition-all duration-150 active:scale-[0.99]"
+            onClick={handleUpdate}
+            disabled={updateStatus === "loading" || loadingUser}
+            className="w-full bg-[#2d3d6b] hover:bg-[#354880] disabled:opacity-50
+                       text-white font-semibold text-[14px] py-3.5 rounded-xl
+                       transition-all active:scale-[0.99] flex items-center justify-center gap-2"
           >
-            Actualizar as Informações
+            {updateStatus === "loading" ? <><ISpinner /> A actualizar…</> :
+             updateStatus === "success" ? <><ICheck /> Actualizado!</> :
+             "Actualizar as Informações"}
           </button>
 
-          {/* Excluir */}
+          {/* Delete */}
           <div className="flex justify-center">
             <button
-              className="bg-red-500 hover:bg-red-600 text-white font-bold text-[14px]
-                         px-10 py-2.5 rounded-full shadow-md shadow-red-500/30
-                         transition-all duration-150 hover:-translate-y-0.5 active:scale-95"
+              onClick={() => setConfirmDelete(true)}
+              disabled={loadingUser}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white
+                         font-bold text-[14px] px-10 py-2.5 rounded-full shadow-md
+                         shadow-red-500/30 transition-all hover:-translate-y-0.5 active:scale-95
+                         disabled:opacity-50"
             >
-              Excluir Conta
+              <ITrash /> Excluir Conta
             </button>
           </div>
         </div>
-
       </div>
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <footer className="bg-[#0d1b3e] h-11 flex items-center justify-center mt-auto">
         <p className="text-white/40 text-[11px] font-semibold tracking-widest uppercase">
           © 2026 LocaTech – Informação Certa Combustível e Gás Sem Stress
         </p>
       </footer>
 
+      {/* Toast */}
+      {toast && <Toast message={toast.message} type={toast.type} />}
+
+      {/* Confirm logout */}
+      {confirmLogout && (
+        <ConfirmDialog
+          message="Tens a certeza que queres sair da conta?"
+          onConfirm={handleLogout}
+          onCancel={() => setConfirmLogout(false)}
+        />
+      )}
+
+      {/* Confirm delete */}
+      {confirmDelete && (
+        <ConfirmDialog
+          message="Esta acção é irreversível. Tens a certeza que queres excluir a tua conta?"
+          onConfirm={handleDeleteAccount}
+          onCancel={() => setConfirmDelete(false)}
+          danger
+        />
+      )}
     </div>
   );
 }
