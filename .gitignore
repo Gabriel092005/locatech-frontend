@@ -1,5 +1,13 @@
+# Dependências
 node_modules/
+
+# Configurações Locais e Chaves (Segurança)
 .env
+vite.config.ts
+
+# Builds e Saídas
 dist/
 build/
+
+# Sistema
 .DS_Store

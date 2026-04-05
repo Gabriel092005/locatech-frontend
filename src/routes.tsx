@@ -1,7 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
+
+// Layouts
 import { AuthLayoutPacient } from './pages/_layouts/auth';
-import { SignUpGestor } from './pages/auth/sign-up';
 import { AppLayoutAdmin } from './pages/_layouts/app';
+import { SimpleLayout } from './pages/_layouts/simple'; 
+
+// Páginas
+import { SignUpGestor } from './pages/auth/sign-up';
 import { Home } from './pages/auth/lading-page';
 import { SelectAccountType } from './pages/auth/accountType';
 import { SuccessAccount } from './pages/auth/succseeAccount';
@@ -10,32 +15,48 @@ import LocaTechDashboard from './pages/app/dashboard/dasboard';
 import NotificacoesPage from './pages/app/dashboard/notificacoes';
 import DefinicoesDashPage from './pages/app/dashboard/dasboard-details';
 import PerfilPage from './pages/app/dashboard/perfil';
-
+import { Sobre } from './pages/auth/sobre';
+import { ComoFunciona } from './pages/auth/como-funciona';
+import { Contactos } from './pages/auth/contactos';
 
 export const router = createBrowserRouter([
-{
-  path: '/',
-  element: <AppLayoutAdmin />, 
-  children: [
-    {path:'', element:<LocaTechDashboard></LocaTechDashboard>},
-    {path:'dashboard', element:<LocaTechDashboard></LocaTechDashboard>},
-    {path:'perfil', element:<PerfilPage></PerfilPage>},
-    {
-  path: '/detail/:id', // O ':' indica que o ID é dinâmico
-  element: <DefinicoesDashPage />, 
-},
-{path:'notificacoes', element:<NotificacoesPage></NotificacoesPage>}
-  ],
-},
-{
-    path: '/auth',
-    element: <AuthLayoutPacient />, // Layout com fundo de posto e vidro
+  {
+    path: '/',
+    element: <AppLayoutAdmin />, 
     children: [
-      { index: true, element: <Home /> }, // Use 'index: true' em vez de path: '/'
+      { path: '', element: <LocaTechDashboard /> }, 
+      { path: 'dashboard', element: <LocaTechDashboard /> },
+      { path: 'perfil', element: <PerfilPage /> },
+      { path: 'detail/:id', element: <DefinicoesDashPage /> },
+      { path: 'notificacoes', element: <NotificacoesPage /> }
+    ],
+  },
+  {
+    path: '/',
+    element: <SimpleLayout />, 
+    children: [
+      { path: 'sobre', element: <Sobre /> }, 
+      // REMOVIDO DAQUI: como-funciona
+    ],
+  },
+  // Bloco unificado para Contactos e Como Funciona (Pegando a visão do AuthLayoutPacient)
+  {
+    path: '/',
+    element: <AuthLayoutPacient />, 
+    children: [
+      { path: 'contactos', element: <Contactos /> },
+      { path: 'como-funciona', element: <ComoFunciona /> }, // ADICIONADO AQUI
+    ],
+  },
+  {
+    path: '/auth',
+    element: <AuthLayoutPacient />, 
+    children: [
+      { index: true, element: <Home /> }, 
       { path: 'select-type', element: <SelectAccountType /> }, 
       { path: 'sign-up-gestor', element: <SignUpGestor /> },
-      { path: 'success', element: <SuccessAccount /> }, // Imagem 4
-      { path: 'error', element: <ErrorAccount /> },     // Imagem 5
+      { path: 'success', element: <SuccessAccount /> }, 
+      { path: 'error', element: <ErrorAccount /> },
     ],
   },
 ]);
