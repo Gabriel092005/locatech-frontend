@@ -68,7 +68,7 @@ function ISettings({ className = "w-5 h-5" }: { className?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { to: "/perfil",       label: "Perfil",       Icon: IUser     },
+  { to: "/gestor/perfil",       label: "Perfil",       Icon: IUser     },
   { to: "/dashboard",    label: "Dashboard",    Icon: IGrid     },
   { to: "/notificacoes", label: "Notificações", Icon: IBell     },
   { to: "/salvos",       label: "Salvos",       Icon: IBookmark },

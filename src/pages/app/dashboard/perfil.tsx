@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { api } from "@/lib/axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,13 +69,12 @@ function ITrash({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function avatarUrl(path: string | null): string | null {
   if (!path) return null;
-  // Se já é uma URL completa, usa directo; senão monta com a base da API
   if (path.startsWith("http")) return path;
-  const base = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:3001";
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
   return `${base}/${path.replace(/^\//, "")}`;
 }
 
@@ -128,13 +128,11 @@ function ConfirmDialog({
 function Toast({ message, type }: { message: string; type: "success" | "error" }) {
   return (
     <div
-      className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2 animate-bounce-once ${
-        type === "success"
-          ? "bg-green-500 text-white"
-          : "bg-red-500 text-white"
+      className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2 ${
+        type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
       }`}
     >
-      {type === "success" ? <ICheck className="w-4 h-4" /> : null}
+      {type === "success" && <ICheck className="w-4 h-4" />}
       {message}
     </div>
   );
@@ -143,49 +141,51 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PerfilPage() {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef     = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  // ── React Query — /me ──────────────────────────────────────────────────────
+  const {
+    data: user,
+    isLoading: loadingUser,
+  } = useQuery<UserMe>({
+    queryKey: ["user-me"],
+    queryFn: async () => {
+      const { data } = await api.get<UserMe>("/me");
+      return data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 min
+  });
+
+  console.log('fff',user)
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [user, setUser]               = useState<UserMe | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-
-  const [preview, setPreview]         = useState<string | null>(null);
-  const [avatarFile, setAvatarFile]   = useState<File | null>(null);
+  const [preview,      setPreview]      = useState<string | null>(null);
+  const [avatarFile,   setAvatarFile]   = useState<File | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<UpdateStatus>("idle");
 
   const [form, setForm] = useState({
-    nome: "",
-    email: "",
-    phone: "",
+    nome:     "",
+    email:    "",
+    phone:    "",
     password: "",
   });
 
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
-  const [toast, setToast]               = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast,        setToast]        = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const [confirmLogout, setConfirmLogout]   = useState(false);
-  const [confirmDelete, setConfirmDelete]   = useState(false);
-
-  // ── Fetch /me ──────────────────────────────────────────────────────────────
+  // ── Preenche o formulário quando o user carrega ────────────────────────────
   useEffect(() => {
-    async function fetchMe() {
-      try {
-        const { data } = await api.get<UserMe>("/me");
-        setUser(data);
-        setForm({
-          nome:     data.nome     ?? "",
-          email:    data.email    ?? "",
-          phone:    data.phone    ?? "",
-          password: "",
-        });
-      } catch (err) {
-        console.error("Erro ao carregar perfil:", err);
-      } finally {
-        setLoadingUser(false);
-      }
-    }
-    fetchMe();
-  }, []);
+    if (!user) return;
+    setForm({
+      nome:     user.nome  ?? "",
+      email:    user.email ?? "",
+      phone:    user.phone ?? "",
+      password: "",
+    });
+  }, [user]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const showToast = (message: string, type: "success" | "error") => {
@@ -210,11 +210,13 @@ export default function PerfilPage() {
     try {
       const body = new FormData();
       body.append("image", avatarFile);
-      const { data } = await api.patch<{ image_path: string }>("/me/avatar", body, {
+      await api.patch("/me/avatar", body, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setUser((prev) => prev ? { ...prev, image_path: data.image_path } : prev);
+      // Invalida o cache para re-buscar o user com a nova foto
+      await queryClient.invalidateQueries({ queryKey: ["user-me"] });
       setAvatarFile(null);
+      setPreview(null);
       setAvatarStatus("success");
       showToast("Foto actualizada com sucesso!", "success");
     } catch (err: any) {
@@ -230,13 +232,14 @@ export default function PerfilPage() {
     setUpdateStatus("loading");
     try {
       const payload: Record<string, string> = {};
-      if (form.nome.trim()  && form.nome  !== user?.nome)  payload.nome  = form.nome.trim();
-      if (form.email.trim() && form.email !== user?.email) payload.email = form.email.trim();
-      if (form.phone.trim() && form.phone !== user?.phone) payload.phone = form.phone.trim();
-      if (form.password.trim()) payload.password = form.password.trim();
+      if (form.nome.trim()     && form.nome     !== user?.nome)  payload.nome  = form.nome.trim();
+      if (form.email.trim()    && form.email    !== user?.email) payload.email = form.email.trim();
+      if (form.phone.trim()    && form.phone    !== user?.phone) payload.phone = form.phone.trim();
+      if (form.password.trim())                                  payload.password = form.password.trim();
 
-      const { data } = await api.put<UserMe>("/me", payload);
-      setUser(data);
+      await api.put<UserMe>("/me", payload);
+      // Invalida o cache para re-buscar os dados actualizados
+      await queryClient.invalidateQueries({ queryKey: ["user-me"] });
       setForm((prev) => ({ ...prev, password: "" }));
       setUpdateStatus("success");
       showToast("Informações actualizadas!", "success");
@@ -250,9 +253,7 @@ export default function PerfilPage() {
 
   // ── Logout ─────────────────────────────────────────────────────────────────
   async function handleLogout() {
-    try {
-      await api.post("/auth/logout").catch(() => {}); // best-effort
-    } finally {
+    try { await api.post("/auth/logout").catch(() => {}); } finally {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
@@ -292,7 +293,6 @@ export default function PerfilPage() {
 
         {/* Card – Avatar */}
         <div className="bg-[#dde1e7] rounded-2xl px-8 py-6 flex items-center gap-6 shadow-sm">
-          {/* Avatar circle */}
           <div className="relative w-20 h-20 shrink-0 group">
             <div className="w-20 h-20 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-white">
               {imgSrc
@@ -302,7 +302,6 @@ export default function PerfilPage() {
                   : <IUser />
               }
             </div>
-            {/* Overlay on hover */}
             <button
               onClick={() => fileRef.current?.click()}
               className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
@@ -311,7 +310,6 @@ export default function PerfilPage() {
             </button>
           </div>
 
-          {/* Name or skeleton */}
           <div className="flex-1 min-w-0">
             {loadingUser
               ? <Skeleton className="h-5 w-40 mb-2" />
@@ -332,10 +330,10 @@ export default function PerfilPage() {
                        text-[13px] px-6 py-2.5 rounded-xl transition-all hover:-translate-y-0.5
                        active:scale-95 shadow-md flex items-center gap-2 shrink-0"
           >
-            {avatarStatus === "loading" ? <><ISpinner /> A enviar…</> :
-             avatarStatus === "success" ? <><ICheck /> Guardado!</> :
-             avatarFile ? <><ICheck className="w-3.5 h-3.5" /> Confirmar</> :
-             <><ICamera className="w-3.5 h-3.5" /> Actualizar</>}
+            {avatarStatus === "loading" ? <><ISpinner /> A enviar…</>  :
+             avatarStatus === "success"  ? <><ICheck />  Guardado!</>   :
+             avatarFile                  ? <><ICheck className="w-3.5 h-3.5" /> Confirmar</> :
+                                           <><ICamera className="w-3.5 h-3.5" /> Actualizar</>}
           </button>
         </div>
 
@@ -347,22 +345,24 @@ export default function PerfilPage() {
 
           {loadingUser ? (
             <div className="grid grid-cols-2 gap-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {[
-                { name: "nome",     placeholder: "Nome Completo",  type: "text"     },
-                { name: "email",    placeholder: "E-mail",         type: "email"    },
-                { name: "phone",    placeholder: "Contacto",       type: "tel"      },
-                { name: "password", placeholder: "Nova Palavra-Passe", type: "password" },
-              ].map(({ name, placeholder, type }) => (
+              {(
+                [
+                  { name: "nome",     placeholder: "Nome Completo",      type: "text"     },
+                  { name: "email",    placeholder: "E-mail",             type: "email"    },
+                  { name: "phone",    placeholder: "Contacto",           type: "tel"      },
+                  { name: "password", placeholder: "Nova Palavra-Passe", type: "password" },
+                ] as const
+              ).map(({ name, placeholder, type }) => (
                 <input
                   key={name}
                   name={name}
                   type={type}
                   placeholder={placeholder}
-                  value={form[name as keyof typeof form]}
+                  value={form[name]}
                   onChange={handleChange}
                   className="bg-white border border-slate-200 rounded-xl px-4 py-3
                              text-[13.5px] text-slate-700 placeholder-slate-400
@@ -373,15 +373,24 @@ export default function PerfilPage() {
             </div>
           )}
 
-          {/* Metadata row */}
+          {/* Metadata */}
           {!loadingUser && user && (
             <div className="flex items-center gap-6 text-[11px] text-slate-400 font-medium -mt-2">
               <span>ID: <strong className="text-slate-600">#{user.id}</strong></span>
-              <span>Membro desde: <strong className="text-slate-600">{new Date(user.created_at).toLocaleDateString("pt-AO", { day: "2-digit", month: "short", year: "numeric" })}</strong></span>
+              <span>
+                Membro desde:{" "}
+                <strong className="text-slate-600">
+                  {new Date(user.created_at).toLocaleDateString("pt-AO", {
+                    day: "2-digit", month: "short", year: "numeric",
+                  })}
+                </strong>
+              </span>
               <span className="flex items-center gap-1">
                 Estado:
                 <span className={`w-1.5 h-1.5 rounded-full inline-block ${user.isAlive ? "bg-green-500" : "bg-red-400"}`} />
-                <strong className={user.isAlive ? "text-green-600" : "text-red-500"}>{user.isAlive ? "Activo" : "Inactivo"}</strong>
+                <strong className={user.isAlive ? "text-green-600" : "text-red-500"}>
+                  {user.isAlive ? "Activo" : "Inactivo"}
+                </strong>
               </span>
             </div>
           )}
@@ -395,7 +404,7 @@ export default function PerfilPage() {
                        transition-all active:scale-[0.99] flex items-center justify-center gap-2"
           >
             {updateStatus === "loading" ? <><ISpinner /> A actualizar…</> :
-             updateStatus === "success" ? <><ICheck /> Actualizado!</> :
+             updateStatus === "success"  ? <><ICheck /> Actualizado!</>   :
              "Actualizar as Informações"}
           </button>
 
@@ -422,10 +431,8 @@ export default function PerfilPage() {
         </p>
       </footer>
 
-      {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      {/* Confirm logout */}
       {confirmLogout && (
         <ConfirmDialog
           message="Tens a certeza que queres sair da conta?"
@@ -434,7 +441,6 @@ export default function PerfilPage() {
         />
       )}
 
-      {/* Confirm delete */}
       {confirmDelete && (
         <ConfirmDialog
           message="Esta acção é irreversível. Tens a certeza que queres excluir a tua conta?"
