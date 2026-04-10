@@ -1,37 +1,5 @@
-const notifications = [
-  {
-    id: 1,
-    posto: "Posto Sonangol",
-    localizacao: "Via Avenida Deolinda Rodrigues / Luanda / Angola",
-    mensagem: "Estabelecimento em Chama, afaste-se o mais rápido possível",
-    tipo: "perigo",
-    verificar: false,
-  },
-  {
-    id: 2,
-    posto: "Posto Etu",
-    localizacao: "Centralidade do Sequele / Luanda / Angola",
-    mensagem: "Vazamento de gás inflamável, afaste-se o mais rápido possível",
-    tipo: "perigo",
-    verificar: false,
-  },
-  {
-    id: 3,
-    posto: "Posto Sonangol",
-    localizacao: "Via Catete, Bom Jesus / Luanda / Angola",
-    mensagem: "Foi alterado os preços dos combustíveis, recentemente.",
-    tipo: "info",
-    verificar: true,
-  },
-  {
-    id: 4,
-    posto: "Posto Sonagalp",
-    localizacao: "Benfica / Luanda / Angola",
-    mensagem: "Foi alterado os preços dos combustíveis, recentemente.",
-    tipo: "info",
-    verificar: true,
-  },
-];
+import { FetchNotification } from "@/api/fetch-notification";
+import { useQuery } from "@tanstack/react-query";
 
 function AlertIcon() {
   return (
@@ -52,48 +20,60 @@ function AlertIcon() {
 }
 
 export default function NotificacoesPage() {
+  // 1. Buscamos os dados. Note que 'data' contém o objeto { notifications: [...] }
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => FetchNotification({ userId: 1 }),
+  });
+
+  // 2. Tratamento de carregamento e erro
+  if (isLoading) return <div className="flex justify-center p-10">Carregando notificações...</div>;
+  if (isError) return <div className="flex justify-center p-10 text-red-500">Erro ao carregar dados.</div>;
+
+  // 3. Pegamos a lista de dentro do objeto retornado pelo seu Backend
+  // Usamos um array vazio de fallback caso não existam dados
+  const listaNotificacoes = data?.notifications || [];
+
   return (
     <div className="min-h-full bg-[#edf0f4] flex flex-col">
-
       {/* Conteúdo */}
       <div className="flex-1 px-10 py-8 flex flex-col gap-5">
-        {notifications.map((n) => (
-          <div
-            key={n.id}
-            className="flex items-center gap-6 bg-[#dde1e7] rounded-2xl px-8 py-6
-                       shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            {/* Ícone */}
-            <div className="shrink-0">
-              <AlertIcon />
-            </div>
+        {listaNotificacoes.length > 0 ? (
+          listaNotificacoes.map((n) => (
+            <div
+              key={n.id}
+              className="flex items-center gap-6 bg-[#dde1e7] rounded-2xl px-8 py-6 
+                         shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="shrink-0">
+                <AlertIcon />
+              </div>
 
-            {/* Texto */}
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-900 text-[15px] leading-snug">
-                {n.posto}
-              </p>
-              <p className="text-slate-500 text-[13px] mt-0.5">
-                Localização – {n.localizacao}
-              </p>
-              <p className="font-bold text-slate-800 text-[13px] mt-1.5">
-                {n.mensagem}
-              </p>
-            </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-slate-900 text-[15px] leading-snug">
+                   {/* Ajustado para o campo 'content' que vem do seu JSON */}
+                   Notificação #{n.id}
+                </p>
+                <p className="font-bold text-slate-800 text-[13px] mt-1.5">
+                  {n.content}
+                </p>
+                <p className="text-slate-500 text-[11px] mt-1 italic">
+                  Recebido em: {new Date(n.created_at).toLocaleString('pt-AO')}
+                </p>
+              </div>
 
-            {/* Botão verificar (apenas em algumas notificações) */}
-            {n.verificar && (
+              {/* Botão de ação opcional */}
               <button
-                className="shrink-0 bg-red-500 hover:bg-red-600 active:scale-95
-                           text-white text-[13px] font-bold px-6 py-2.5 rounded-full
-                           shadow-md shadow-red-500/30 transition-all duration-150
-                           hover:shadow-red-500/40 hover:-translate-y-0.5"
+                className="shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-95 
+                           text-white text-[13px] font-bold px-6 py-2.5 rounded-full shadow-md transition-all"
               >
-                Verificar
+                Lida
               </button>
-            )}
-          </div>
-        ))}
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-slate-500">Nenhuma notificação nova.</p>
+        )}
       </div>
 
       {/* Footer */}
@@ -102,7 +82,6 @@ export default function NotificacoesPage() {
           © 2026 LocaTech – Informação Certa Combustível e Gás Sem Stress
         </p>
       </footer>
-
     </div>
   );
 }
