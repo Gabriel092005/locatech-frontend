@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useSensores } from '../../../_layouts/gestor';
 
 // Icons
 function IUser({ className }: { className?: string }) {
@@ -14,6 +15,14 @@ function IGrid({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function IChart({ className }: { className?: string }) { // NOVO ÍCONE PARA ANÁLISE
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
     </svg>
   );
 }
@@ -38,11 +47,14 @@ function ISettings({ className }: { className?: string }) {
 const GESTOR_NAV_ITEMS = [
   { to: "/gestor/perfil", label: "Perfil", Icon: IUser },
   { to: "/gestor/monitoramento", label: "Dashboard", Icon: IGrid }, 
-  { to: "/gestor/notificacoes", label: "Notificações", Icon: IBell }, // ATUALIZADO
+  { to: "/gestor/analise", label: "Análise", Icon: IChart }, // <── NOVO ITEM
+  { to: "/gestor/notificacoes", label: "Notificações", Icon: IBell }, 
   { to: "/gestor/definicoes", label: "Definições", Icon: ISettings },
 ] as const;
 
 export function SidebarGestor() {
+  const { temNotificacaoNova, setTemNotificacaoNova } = useSensores();
+
   return (
     <div className="flex flex-col w-[280px] h-full">
 
@@ -59,9 +71,10 @@ export function SidebarGestor() {
           <NavLink
             key={to}
             to={to}
+            onClick={() => { if (to === "/gestor/notificacoes") setTemNotificacaoNova(false); }}
             className={({ isActive }) =>
               [
-                "flex items-center gap-4 px-5 py-[14px] rounded-2xl",
+                "flex items-center gap-4 px-5 py-[14px] rounded-2xl relative",
                 "text-[15px] font-semibold tracking-wide transition-all duration-200",
                 isActive
                   ? "bg-white/[0.12] text-white shadow-lg" 
@@ -69,7 +82,17 @@ export function SidebarGestor() {
               ].join(" ")
             }
           >
-            <Icon className="w-[20px] h-[20px] shrink-0" />
+            <div className="relative">
+              <Icon className="w-[20px] h-[20px] shrink-0" />
+              
+              {label === "Notificações" && temNotificacaoNova && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                </span>
+              )}
+            </div>
+            
             <span>{label}</span>
           </NavLink>
         ))}

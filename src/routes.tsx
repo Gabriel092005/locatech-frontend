@@ -20,6 +20,8 @@ import PerfilPage from './pages/app/dashboard/perfil';
 import { PerfilGestor } from './pages/app/dashboard/perfil-gestor';
 import { EditarPosto } from './pages/app/dashboard/editar-posto';
 import { Monitoramento } from './pages/app/dashboard/monitoramento';
+import { DefinicoesGestor } from './pages/app/dashboard/definicoes-gestor'; 
+import { MonitoramentoDetalhado } from './pages/app/dashboard/monitoramento-detalhado'; // <── NOVO COMPONENTE
 import { Sobre } from './pages/auth/sobre';
 import { ComoFunciona } from './pages/auth/como-funciona';
 import { Contactos } from './pages/auth/contactos';
@@ -38,13 +40,13 @@ export const router = createBrowserRouter([
     path: '/auth',
     element: <AuthLayoutPacient />,
     children: [
-      { index: true,              element: <Navigate to="/auth/login" replace /> },
-      { path: 'login',            element: <LoginPage /> },
-      { path: 'landing',          element: <Home /> },
-      { path: 'select-type',      element: <SelectAccountType /> },
-      { path: 'sign-up-gestor',   element: <SignUpGestor /> },
-      { path: 'success',          element: <SuccessAccount /> },
-      { path: 'error',            element: <ErrorAccount /> },
+      { index: true,                element: <Navigate to="/auth/login" replace /> },
+      { path: 'login',             element: <LoginPage /> },
+      { path: 'landing',           element: <Home /> },
+      { path: 'select-type',       element: <SelectAccountType /> },
+      { path: 'sign-up-gestor',    element: <SignUpGestor /> },
+      { path: 'success',           element: <SuccessAccount /> },
+      { path: 'error',             element: <ErrorAccount /> },
     ],
   },
 
@@ -53,10 +55,10 @@ export const router = createBrowserRouter([
     path: '/dashboard',
     element: <AppLayoutAdmin />,
     children: [
-      { index: true,          element: <LocaTechDashboard /> },
-      { path: 'perfil',       element: <PerfilPage /> },
-      { path: 'detail/:id',   element: <DefinicoesDashPage /> },
-      { path: 'notificacoes', element: <NotificacoesPage /> },
+      { index: true,           element: <LocaTechDashboard /> },
+      { path: 'perfil',        element: <PerfilPage /> },
+      { path: 'detail/:id',    element: <DefinicoesDashPage /> },
+      { path: 'notificacoes',  element: <NotificacoesPage /> },
     ],
   },
 
@@ -65,11 +67,13 @@ export const router = createBrowserRouter([
     path: '/gestor',
     element: <GestorLayout />,
     children: [
-      { index: true,              element: <Navigate to="/gestor/monitoramento" replace /> },
-      { path: 'monitoramento',    element: <Monitoramento /> },
-      { path: 'notificacoes',     element: <NotificacoesGestor /> },
-      { path: 'perfil',           element: <PerfilPage /> },
-      { path: 'editar-posto',     element: <EditarPosto /> },
+      { index: true,                element: <Navigate to="/gestor/monitoramento" replace /> },
+      { path: 'monitoramento',      element: <Monitoramento /> },
+      { path: 'analise',            element: <MonitoramentoDetalhado /> }, // <── ADICIONADO (Gráficos/Logs)
+      { path: 'notificacoes',       element: <NotificacoesGestor /> },
+      { path: 'perfil',             element: <PerfilPage /> },
+      { path: 'editar-posto',       element: <EditarPosto /> },
+      { path: 'definicoes',         element: <DefinicoesGestor /> }, 
     ],
   },
 

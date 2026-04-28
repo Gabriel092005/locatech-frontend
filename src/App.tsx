@@ -6,34 +6,33 @@ import { Toaster } from 'sonner'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/react-query'
 import { ThemeProvider } from './components/theme/theme-provider'
-import { useEffect } from 'react' // Adicionado para inicializar as animações
+import { useEffect } from 'react'
+import { SensorProvider } from './context/SensorContext'
 
-// Importação do AOS
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 export function App() {
   
-  // Inicializa as animações assim que o App carrega
   useEffect(() => {
     AOS.init({
-      duration: 1000, // Duração de 1 segundo
-      once: true,     // Anima apenas na primeira vez que aparece no scroll
-      easing: 'ease-out-cubic', // Movimento mais suave e profissional
+      duration: 1000,
+      once: true,     
+      easing: 'ease-out-cubic',
     });
   }, []);
 
   return (
     <HelmetProvider>
-      {/* Ajustei o título para LocaTech conforme o seu projeto */}
       <Helmet titleTemplate='%s | LocaTech' defaultTitle="LocaTech" />
-      
-      {/* Este Toaster global já cuida de todas as páginas! */}
       <Toaster richColors position="top-center" />
 
       <ThemeProvider storageKey="vite-ui-theme" defaultTheme="light">
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
+          {/* O SensorProvider deve envolver o RouterProvider para os dados serem globais */}
+          <SensorProvider> 
+            <RouterProvider router={router} />
+          </SensorProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </HelmetProvider>
