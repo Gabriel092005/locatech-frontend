@@ -4,7 +4,6 @@ import { api } from "@/lib/axios";
 
 type LoginStatus = "idle" | "loading" | "error";
 
-
 function ISpinner({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -49,25 +48,23 @@ function IMail({ className = "w-4 h-4" }: { className?: string }) {
 function LocaTechLogo() {
   return (
     <div className="flex flex-col items-center gap-1 select-none">
-      <div className="relative w-14 h-14 bg-[#0d1b3e] rounded-2xl flex items-center justify-center shadow-lg shadow-[#0d1b3e]/30">
-        <svg viewBox="0 0 32 32" className="w-8 h-8 fill-white">
+      <div className="relative w-12 h-12 sm:w-14 sm:h-14 bg-[#0d1b3e] rounded-2xl flex items-center justify-center shadow-lg shadow-[#0d1b3e]/30">
+        <svg viewBox="0 0 32 32" className="w-7 h-7 sm:w-8 sm:h-8 fill-white">
           <path d="M16 3 C16 3 7 14 7 20 C7 24.97 11.03 29 16 29 C20.97 29 25 24.97 25 20 C25 14 16 3 16 3Z" />
           <circle cx="22" cy="11" r="3" className="fill-[#edf0f4]/40" />
         </svg>
       </div>
       <div className="text-center">
-        <p className="font-black text-2xl text-[#0d1b3e] tracking-tight leading-none">
+        <p className="font-black text-xl sm:text-2xl text-[#0d1b3e] tracking-tight leading-none">
           Loca<span className="text-[#2d3d6b]">Tech</span>
         </p>
-        <p className="text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-0.5">
+        <p className="text-[9px] sm:text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-0.5">
           Combustível &amp; Gás
         </p>
       </div>
     </div>
   );
 }
-
-// ── Input Field ───────────────────────────────────────────────────────────────
 
 function Field({
   icon,
@@ -92,11 +89,11 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider pl-1">
+      <label className="text-[11px] sm:text-[12px] font-bold text-slate-500 uppercase tracking-wider pl-1">
         {label}
       </label>
       <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+        <span className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
           {icon}
         </span>
         <input
@@ -106,13 +103,13 @@ function Field({
           value={value}
           onChange={onChange}
           disabled={disabled}
-          className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-3
-                     text-[13.5px] text-slate-700 placeholder-slate-400
+          className="w-full bg-white border border-slate-200 rounded-xl pl-9 sm:pl-10 pr-9 sm:pr-10 py-3
+                     text-[13px] sm:text-[13.5px] text-slate-700 placeholder-slate-400
                      outline-none focus:border-[#0d1b3e] focus:ring-2 focus:ring-[#0d1b3e]/10
                      disabled:opacity-60 transition-all"
         />
         {suffix && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+          <span className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2">
             {suffix}
           </span>
         )}
@@ -120,8 +117,6 @@ function Field({
     </div>
   );
 }
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -146,9 +141,18 @@ export default function LoginPage() {
         email: form.email.trim(),
         password: form.password,
       });
-      console.log(data)
       localStorage.setItem("token", data.token);
-      window.location.href = "dashboard";
+      
+      // Decodificar o token para obter a role
+      try {
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        const role = payload.role;
+        
+        // Todos redirecionam para /dashboard (unificado)
+        window.location.href = "/dashboard";
+      } catch {
+        window.location.href = "/dashboard";
+      }
     } catch (err: any) {
       setStatus("error");
       setErrorMsg(
@@ -162,32 +166,26 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#edf0f4] flex flex-col">
 
-      {/* ── Decorative top bar ── */}
       <div className="h-1.5 bg-gradient-to-r from-[#0d1b3e] via-[#2d3d6b] to-[#0d1b3e]" />
 
-      {/* ── Content ── */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm flex flex-col gap-6">
+      <div className="flex-1 flex items-center justify-center px-3 sm:px-4 py-8 sm:py-12">
+        <div className="w-full max-w-[380px] sm:max-w-sm flex flex-col gap-5 sm:gap-6">
 
-          {/* Logo */}
           <div className="flex justify-center">
             <LocaTechLogo />
           </div>
 
-          {/* Card */}
-          <div className="bg-[#dde1e7] rounded-2xl px-8 py-8 shadow-sm flex flex-col gap-5">
-
-            <div className="text-center -mb-1">
-              <h1 className="font-black text-[22px] text-slate-900 tracking-tight leading-tight">
+          <div className="bg-[#dde1e7] rounded-2xl px-6 sm:px-8 py-6 sm:py-8 shadow-sm flex flex-col gap-4 sm:gap-5">
+            <div className="text-center -mb-0.5 sm:-mb-1">
+              <h1 className="font-black text-lg sm:text-[22px] text-slate-900 tracking-tight leading-tight">
                 Bem-vindo de volta
               </h1>
-              <p className="text-[12.5px] text-slate-400 font-medium mt-1">
+              <p className="text-[12px] sm:text-[12.5px] text-slate-400 font-medium mt-1">
                 Entra na tua conta para continuar
               </p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-4">
               <Field
                 icon={<IMail className="w-4 h-4" />}
                 label="E-mail"
@@ -220,19 +218,17 @@ export default function LoginPage() {
                 }
               />
 
-              {/* Error message */}
               {status === "error" && errorMsg && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-[12.5px] font-semibold px-4 py-2.5 rounded-xl text-center">
+                <div className="bg-red-50 border border-red-200 text-red-600 text-[12px] sm:text-[12.5px] font-semibold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-center">
                   {errorMsg}
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full bg-[#0d1b3e] hover:bg-[#162251] disabled:opacity-60
-                           text-white font-bold text-[14px] py-3.5 rounded-xl mt-1
+                           text-white font-bold text-[13px] sm:text-[14px] py-3 sm:py-3.5 rounded-xl mt-0.5 sm:mt-1
                            transition-all hover:-translate-y-0.5 active:scale-[0.99]
                            flex items-center justify-center gap-2 shadow-md shadow-[#0d1b3e]/20"
               >
@@ -244,15 +240,13 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 -my-1">
+            <div className="flex items-center gap-2 sm:gap-3 -my-0.5 sm:-my-1">
               <div className="flex-1 h-px bg-slate-300" />
-              <span className="text-[11px] text-slate-400 font-semibold">ou</span>
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold">ou</span>
               <div className="flex-1 h-px bg-slate-300" />
             </div>
 
-            {/* Register link */}
-            <p className="text-center text-[12.5px] text-slate-500">
+            <p className="text-center text-[12px] sm:text-[12.5px] text-slate-500">
               Não tens conta?{" "}
               <a
                 href="/sign-up-gestor"
@@ -263,16 +257,14 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Metadata hint */}
-          <p className="text-center text-[11px] text-slate-400 font-medium">
+          <p className="text-center text-[10px] sm:text-[11px] text-slate-400 font-medium px-2">
             Ao entrar aceitas os termos de uso da plataforma LocaTech.
           </p>
         </div>
       </div>
 
-      {/* ── Footer ── */}
-      <footer className="bg-[#0d1b3e] h-11 flex items-center justify-center">
-        <p className="text-white/40 text-[11px] font-semibold tracking-widest uppercase">
+      <footer className="bg-[#0d1b3e] h-10 sm:h-11 flex items-center justify-center px-2">
+        <p className="text-white/40 text-[10px] sm:text-[11px] font-semibold tracking-widest uppercase text-center">
           © 2026 LocaTech – Informação Certa Combustível e Gás Sem Stress
         </p>
       </footer>

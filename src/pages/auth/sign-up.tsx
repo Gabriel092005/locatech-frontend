@@ -45,7 +45,7 @@ export function SignUpGestor() {
   });
 
   const [step2, setStep2] = useState<Step2Data>({
-    produtoId: "",
+    produtoId: "1",
     precoAtual: "",
     horario: "",
     alvara: null,
@@ -97,16 +97,18 @@ export function SignUpGestor() {
     setErro(null);
 
     try {
-      // 1. Criar o utilizador (gestor) com foto opcional
-      const formDataUser = new FormData();
-      formDataUser.append("nome", step3.nome);
-      formDataUser.append("email", step3.email);
-      formDataUser.append("password", step3.palavraPasse);
-      if (step3.foto) formDataUser.append("image", step3.foto);
+      localStorage.setItem("novoUsuarioNome", step3.nome);
 
-      const { data: userData } = await api.post("/users", formDataUser, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+       const formDataUser = new FormData();
+       formDataUser.append("nome", step3.nome);
+       formDataUser.append("email", step3.email);
+       formDataUser.append("password", step3.palavraPasse);
+       formDataUser.append("role", "GESTOR"); // Define role como GESTOR
+       if (step3.foto) formDataUser.append("image", step3.foto);
+
+       const { data: userData } = await api.post("/users", formDataUser, {
+         headers: { "Content-Type": "multipart/form-data" },
+       });
 
       const gestorId: number = userData.user.id;
 
@@ -172,26 +174,26 @@ export function SignUpGestor() {
   };
 
   const inputClass =
-    "w-full h-14 px-6 rounded-xl bg-[#D9D9D9] text-slate-800 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#21A301]/50";
+    "w-full h-12 sm:h-14 px-4 sm:px-6 rounded-xl bg-[#D9D9D9] text-slate-800 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#21A301]/50";
 
   const selectClass =
-    "w-full h-14 px-6 rounded-xl bg-[#D9D9D9] text-slate-800 appearance-none focus:outline-none cursor-pointer focus:ring-2 focus:ring-[#21A301]/50";
+    "w-full h-12 sm:h-14 px-4 sm:px-6 rounded-xl bg-[#D9D9D9] text-slate-800 appearance-none focus:outline-none cursor-pointer focus:ring-2 focus:ring-[#21A301]/50";
 
   return (
-    <div className="w-full max-w-[500px] bg-white/10 backdrop-blur-md rounded-[50px] p-12 shadow-2xl border border-white/10 text-white relative flex flex-col items-center overflow-hidden">
+    <div className="w-full max-w-[400px] sm:max-w-[500px] bg-white/10 backdrop-blur-md rounded-[40px] sm:rounded-[50px] p-6 sm:p-12 shadow-2xl border border-white/10 text-white relative flex flex-col items-center overflow-hidden">
 
       {/* Botão voltar */}
       {step > 1 && (
         <button
           onClick={prevStep}
-          className="absolute left-10 top-12 text-[#F13324] text-4xl hover:scale-110 transition-transform z-20"
+          className="absolute left-4 sm:left-10 top-8 sm:top-12 text-[#F13324] text-3xl sm:text-4xl hover:scale-110 transition-transform z-20"
         >
           <span className="leading-none">←</span>
         </button>
       )}
 
       {/* Título */}
-      <h2 className="text-2xl font-black text-center mb-2 leading-tight">
+      <h2 className="text-xl sm:text-2xl font-black text-center mb-2 leading-tight">
         Crie uma conta <br />
         <span className="font-bold">(Gestor)</span>
       </h2>
@@ -214,13 +216,13 @@ export function SignUpGestor() {
 
       {/* Erro global */}
       {erro && (
-        <div className="w-full mb-4 px-4 py-2.5 bg-[#F13324]/20 border border-[#F13324]/40 rounded-xl text-sm text-center text-red-200">
+        <div className="w-full mb-3 sm:mb-4 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#F13324]/20 border border-[#F13324]/40 rounded-xl text-xs sm:text-sm text-center text-red-200">
           {erro}
         </div>
       )}
 
       {/* Steps */}
-      <div className="w-full min-h-[300px] relative">
+      <div className="w-full min-h-[250px] sm:min-h-[300px] relative">
         <AnimatePresence mode="wait">
 
           {/* ── Step 1: Dados da Empresa ─────────────────────────────────── */}
@@ -409,11 +411,11 @@ export function SignUpGestor() {
       </div>
 
       {/* Botão principal */}
-      <div className="mt-10 flex justify-center z-20">
+      <div className="mt-6 sm:mt-10 flex justify-center z-20">
         <button
           onClick={step === 3 ? handleSubmit : handleNext}
           disabled={isLoading}
-          className="px-12 h-14 bg-[#21A301] hover:bg-[#1a8201] disabled:opacity-60 disabled:cursor-not-allowed transition-all rounded-full text-white font-black text-xl shadow-xl uppercase active:scale-95 flex items-center gap-3"
+          className="px-8 sm:px-12 h-12 sm:h-14 bg-[#21A301] hover:bg-[#1a8201] disabled:opacity-60 disabled:cursor-not-allowed transition-all rounded-full text-white font-black text-lg sm:text-xl shadow-xl uppercase active:scale-95 flex items-center gap-3"
         >
           {isLoading ? (
             <>

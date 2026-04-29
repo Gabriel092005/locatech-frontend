@@ -1,5 +1,6 @@
 import { User, Camera, Plus, Edit2, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; // IMPORTADO
+import { fazerLogout } from '@/lib/auth';
 
 export function PerfilGestor() {
   const navigate = useNavigate(); // INSTANCIADO
@@ -21,7 +22,10 @@ export function PerfilGestor() {
           <Edit2 size={12} /> Editar Posto
         </button>
 
-        <button className="bg-red-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-red-700 transition-colors shadow-sm">
+        <button 
+          onClick={fazerLogout}
+          className="bg-red-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-red-700 transition-colors shadow-sm"
+        >
           Sair da conta
         </button>
         <button className="bg-gray-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5">

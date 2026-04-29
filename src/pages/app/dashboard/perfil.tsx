@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { api } from "@/lib/axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fazerLogout } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -74,8 +75,9 @@ function ITrash({ className = "w-4 h-4" }: { className?: string }) {
 function avatarUrl(path: string | null): string | null {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  const base = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
-  return `${base}/${path.replace(/^\//, "")}`;
+  // O backend salva apenas o filename, ex: "1777404946113-xxx.png"
+  // O backend serve em http://localhost:3001/uploads/
+  return `http://localhost:3001/uploads/${path}`;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -210,16 +212,24 @@ export default function PerfilPage() {
     try {
       const body = new FormData();
       body.append("image", avatarFile);
-      await api.patch("/me/avatar", body, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Não definir Content-Type manualmente - o browser define com boundary correto
+      const { data } = await api.patch("/me/avatar", body);
+      
+      console.log('[Frontend] Resposta upload avatar:', data);
+      
       // Invalida o cache para re-buscar o user com a nova foto
       await queryClient.invalidateQueries({ queryKey: ["user-me"] });
+      
+      // Força recarregamento imediato do user
+      const { data: userData } = await api.get<UserMe>("/me");
+      console.log('[Frontend] User após upload:', userData);
+      
       setAvatarFile(null);
       setPreview(null);
       setAvatarStatus("success");
       showToast("Foto actualizada com sucesso!", "success");
     } catch (err: any) {
+      console.error('[Frontend] Erro upload:', err.response?.data || err);
       setAvatarStatus("error");
       showToast(err?.response?.data?.message ?? "Erro ao actualizar foto.", "error");
     } finally {
@@ -252,19 +262,15 @@ export default function PerfilPage() {
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
-  async function handleLogout() {
-    try { await api.post("/auth/logout").catch(() => {}); } finally {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }
+  function handleLogout() {
+    fazerLogout();
   }
 
   // ── Delete account ─────────────────────────────────────────────────────────
   async function handleDeleteAccount() {
     try {
       await api.delete("/me");
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      fazerLogout();
     } catch (err: any) {
       showToast(err?.response?.data?.message ?? "Erro ao excluir conta.", "error");
     }
@@ -272,6 +278,7 @@ export default function PerfilPage() {
 
   // ── Avatar src ─────────────────────────────────────────────────────────────
   const imgSrc = preview ?? avatarUrl(user?.image_path ?? null);
+  console.log('Avatar debug - image_path:', user?.image_path, '| imgSrc:', imgSrc);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -294,14 +301,19 @@ export default function PerfilPage() {
         {/* Card – Avatar */}
         <div className="bg-[#dde1e7] rounded-2xl px-8 py-6 flex items-center gap-6 shadow-sm">
           <div className="relative w-20 h-20 shrink-0 group">
-            <div className="w-20 h-20 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-white">
-              {imgSrc
-                ? <img src={imgSrc} alt="avatar" className="w-full h-full object-cover" />
-                : loadingUser
-                  ? <div className="w-full h-full animate-pulse bg-slate-600 rounded-full" />
-                  : <IUser />
-              }
-            </div>
+             <div className="w-20 h-20 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-white">
+               {imgSrc
+                 ? <img 
+                     src={imgSrc} 
+                     alt="avatar" 
+                     className="w-full h-full object-cover" 
+                     onError={(e) => console.error('Erro ao carregar imagem:', imgSrc, e)}
+                   />
+                 : loadingUser
+                   ? <div className="w-full h-full animate-pulse bg-slate-600 rounded-full" />
+                   : <IUser />
+               }
+             </div>
             <button
               onClick={() => fileRef.current?.click()}
               className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"

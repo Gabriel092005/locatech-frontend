@@ -717,13 +717,30 @@ function EmptyScreen({ onRetry }: { onRetry: () => void }) {
 export default function LocaTechDashboard() {
   const [allStations, setAllStations]       = useState<Station[]>([]);
   const [selected, setSelected]             = useState<Station | null>(null);
-  const [savedIds, setSavedIds]             = useState<Set<number>>(new Set());
+  const [savedIds, setSavedIds]             = useState<Set<number>>(() => {
+    const saved = localStorage.getItem('@Locatech:saved');
+    return saved ? new Set(JSON.parse(saved)) : new Set<number>();
+  });
   const [loading, setLoading]               = useState(true);
   const [locating, setLocating]             = useState(false);
   const [gpsError, setGpsError]             = useState<string | null>(null);
   const [nearbyStations, setNearbyStations] = useState<Station[]>([]);
   const [showDialog, setShowDialog]         = useState(false);
   const [showNovoPosto, setShowNovoPosto]   = useState(false);
+  const [userRole, setUserRole]             = useState<string | null>(null);
+
+  // Obter role do utilizador do token JWT
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role);
+      } catch {
+        setUserRole(null);
+      }
+    }
+  }, []);
 
   // ── Carregar todos os postos ───────────────────────────────────────────────
   const loadAll = useCallback(async () => {
@@ -799,12 +816,18 @@ export default function LocaTechDashboard() {
     setSelected(novo);
   }, []);
 
-  const toggleSaved = (id: number) =>
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggleSaved = async (id: number) => {
+    try {
+      const { data } = await api.post(`/saved-postos/${id}`);
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        data.saved ? next.add(id) : next.delete(id);
+        return next;
+      });
+    } catch (err) {
+      console.error("Erro ao favoritar:", err);
+    }
+  };
 
   // ── Render guards ─────────────────────────────────────────────────────────
   if (loading) return <LoadingScreen />;
@@ -879,13 +902,15 @@ export default function LocaTechDashboard() {
 
             <div className="h-px bg-slate-300/60 my-4" />
 
-            {/* Botão Novo Posto */}
-            <button
-              onClick={() => setShowNovoPosto(true)}
-              className="flex items-center justify-center gap-2 w-full py-3 mb-2 bg-white/70 hover:bg-white border border-slate-300/60 text-slate-700 text-[13px] font-bold rounded-full transition-all active:scale-95 shadow-sm"
-            >
-              <IPlus className="w-4 h-4" /> Adicionar Novo Posto
-            </button>
+            {/* Botão Novo Posto - apenas para GESTOR/ADMIN */}
+            {(userRole === 'GESTOR' || userRole === 'ADMIN') && (
+              <button
+                onClick={() => setShowNovoPosto(true)}
+                className="flex items-center justify-center gap-2 w-full py-3 mb-2 bg-white/70 hover:bg-white border border-slate-300/60 text-slate-700 text-[13px] font-bold rounded-full transition-all active:scale-95 shadow-sm"
+              >
+                <IPlus className="w-4 h-4" /> Adicionar Novo Posto
+              </button>
+            )}
 
             {/* Botão GPS */}
             <button

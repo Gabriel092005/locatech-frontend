@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { NavBar } from "./header";
-import { SideBar } from "../app/dashboard/sidebar/Sidebar";
+import { SidebarUnified } from "../app/dashboard/sidebar/SidebarUnified";
 
 /**
  * Layout principal do painel de administração.
@@ -12,7 +12,7 @@ export function AppLayoutAdmin() {
 
       {/* ── Sidebar fixa à esquerda ── */}
       <aside className="hidden md:flex w-[260px] h-full shrink-0 flex-col ">
-        <SideBar />
+        <SidebarUnified />
       </aside>
 
       {/* ── Área de conteúdo ── */}

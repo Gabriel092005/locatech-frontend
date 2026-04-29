@@ -10,6 +10,7 @@ import { GestorLayout } from './pages/_layouts/gestor';
 import { SignUpGestor } from './pages/auth/sign-up';
 import { Home } from './pages/auth/lading-page';
 import { SelectAccountType } from './pages/auth/accountType';
+import { SignUpCliente } from './pages/auth/sign-up-cliente';
 import { SuccessAccount } from './pages/auth/succseeAccount';
 import { ErrorAccount } from './pages/auth/errorAccount';
 import LocaTechDashboard from './pages/app/dashboard/dasboard';
@@ -21,11 +22,14 @@ import { PerfilGestor } from './pages/app/dashboard/perfil-gestor';
 import { EditarPosto } from './pages/app/dashboard/editar-posto';
 import { Monitoramento } from './pages/app/dashboard/monitoramento';
 import { DefinicoesGestor } from './pages/app/dashboard/definicoes-gestor'; 
-import { MonitoramentoDetalhado } from './pages/app/dashboard/monitoramento-detalhado'; // <── NOVO COMPONENTE
+import { MonitoramentoDetalhado } from './pages/app/dashboard/monitoramento-detalhado';
 import { Sobre } from './pages/auth/sobre';
 import { ComoFunciona } from './pages/auth/como-funciona';
 import { Contactos } from './pages/auth/contactos';
 import LoginPage from './pages/app/dashboard/login';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { UnauthorizedPage } from './pages/auth/unauthorized';
+import { SavedPostsPage } from './pages/app/dashboard/saved-posts';
 
 export const router = createBrowserRouter([
 
@@ -44,36 +48,36 @@ export const router = createBrowserRouter([
       { path: 'login',             element: <LoginPage /> },
       { path: 'landing',           element: <Home /> },
       { path: 'select-type',       element: <SelectAccountType /> },
+      { path: 'sign-up-cliente',  element: <SignUpCliente /> },
       { path: 'sign-up-gestor',    element: <SignUpGestor /> },
       { path: 'success',           element: <SuccessAccount /> },
       { path: 'error',             element: <ErrorAccount /> },
     ],
   },
 
-  // ── Dashboard Admin ───────────────────────────────────────────────────────
+  // ── Acesso Negado ───────────────────────────────────────────────────────
+  {
+    path: '/unauthorized',
+    element: <UnauthorizedPage />,
+  },
+
+  // ── Dashboard Unificado (Todas as roles) ──────────────────────────────
   {
     path: '/dashboard',
-    element: <AppLayoutAdmin />,
+    element: <ProtectedRoute allowedRoles={['MEMBER', 'GESTOR', 'ADMIN']}>
+      <AppLayoutAdmin />
+    </ProtectedRoute>,
     children: [
       { index: true,           element: <LocaTechDashboard /> },
       { path: 'perfil',        element: <PerfilPage /> },
       { path: 'detail/:id',    element: <DefinicoesDashPage /> },
       { path: 'notificacoes',  element: <NotificacoesPage /> },
-    ],
-  },
-
-  // ── Dashboard Gestor ──────────────────────────────────────────────────────
-  {
-    path: '/gestor',
-    element: <GestorLayout />,
-    children: [
-      { index: true,                element: <Navigate to="/gestor/monitoramento" replace /> },
-      { path: 'monitoramento',      element: <Monitoramento /> },
-      { path: 'analise',            element: <MonitoramentoDetalhado /> }, // <── ADICIONADO (Gráficos/Logs)
-      { path: 'notificacoes',       element: <NotificacoesGestor /> },
-      { path: 'perfil',             element: <PerfilPage /> },
-      { path: 'editar-posto',       element: <EditarPosto /> },
-      { path: 'definicoes',         element: <DefinicoesGestor /> }, 
+      { path: 'salvos',        element: <SavedPostsPage /> },
+      // Rotas exclusivas para GESTOR
+      { path: 'monitoramento', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><Monitoramento /></ProtectedRoute> },
+      { path: 'analise',       element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><MonitoramentoDetalhado /></ProtectedRoute> },
+      { path: 'editar-posto', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><EditarPosto /></ProtectedRoute> },
+      { path: 'definicoes',   element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><DefinicoesGestor /></ProtectedRoute> },
     ],
   },
 
