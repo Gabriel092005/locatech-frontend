@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io('http://192.168.8.9:3001');
+const socket = io('http://192.168.8.84:3001');
 const SensorContext = createContext<any>(null);
 
 export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
+  // Estado dos Dispositivos
   const [dispositivos, setDispositivos] = useState(() => {
     const salvo = localStorage.getItem('@Locatech:sensores');
     return salvo ? JSON.parse(salvo) : {
@@ -13,16 +14,36 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
     };
   });
 
+  // Estado das Configurações (Importante para a página de definições)
+  const [config, setConfig] = useState(() => {
+    const salvo = localStorage.getItem('@Locatech:config');
+    return salvo ? JSON.parse(salvo) : {
+      limiteTemp: 35,
+      limiteHumidade: 90,
+      limiteCombustivel: 49,
+      limiteTempGas: 35,
+      limiteHumidadeGas: 90,
+      limiteUnidades: 10,
+      somAtivado: true
+    };
+  });
+
+  // Persistir config sempre que mudar
+  useEffect(() => {
+    localStorage.setItem('@Locatech:config', JSON.stringify(config));
+  }, [config]);
+
   useEffect(() => {
     socket.on('monitoramento_update', (novoDado: any) => {
       if (!novoDado || !novoDado.id) return;
       setDispositivos((prev: any) => {
-        const anterior = prev[novoDado.id] || { stock: 0 };
+        const id = novoDado.id;
+        const anterior = prev[id] || { stock: 0 };
         let stockFinal = novoDado.stock;
-        if (novoDado.id === 'esp1' && novoDado.stock === 0 && anterior.stock > 0) {
+        if (id === 'esp1' && (novoDado.stock === 0 || novoDado.stock === null) && anterior.stock > 0) {
           stockFinal = anterior.stock;
         }
-        const novoEstado = { ...prev, [novoDado.id]: { ...anterior, ...novoDado, stock: stockFinal } };
+        const novoEstado = { ...prev, [id]: { ...anterior, ...novoDado, stock: stockFinal } };
         localStorage.setItem('@Locatech:sensores', JSON.stringify(novoEstado));
         return novoEstado;
       });
@@ -31,7 +52,7 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <SensorContext.Provider value={{ dispositivos }}>
+    <SensorContext.Provider value={{ dispositivos, config, setConfig }}>
       {children}
     </SensorContext.Provider>
   );
@@ -39,6 +60,5 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useSensores = () => {
   const context = useContext(SensorContext);
-  if (!context) return { dispositivos: { esp1: { temp: 0, humi: 0, stock: 0 }, esp2: { temp: 0, humi: 0, stock: 0 } } };
-  return context;
+  return context; // Retorna null se estiver fora do Provider
 };

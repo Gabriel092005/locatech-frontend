@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, Thermometer, Fuel, RefreshCcw, Activity, 
-  Droplets, Flame, Gauge, Package, Calculator // Corrigido para Calculator
+  Droplets, Flame, Gauge, Package, Calculator 
 } from 'lucide-react';
-import { useSensores } from '../../_layouts/gestor';
+
+// --- MUDANÇA AQUI: IMPORTANDO DO ARQUIVO DE CONTEXTO DIRETAMENTE ---
+import { useSensores } from '../../../context/SensorContext'; 
+
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, ComposedChart, Line, Bar, Legend
@@ -14,26 +17,20 @@ export function MonitoramentoDetalhado() {
   const [dadosGrafico, setDadosGrafico] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!dispositivos.esp1 && !dispositivos.esp2) return;
+    if (!dispositivos.esp1 || !dispositivos.esp2) return;
 
-    // Captura de valores individuais
     const t1 = Number(dispositivos.esp1?.temp ?? 0);
     const t2 = Number(dispositivos.esp2?.temp ?? 0);
     const h1 = Number(dispositivos.esp1?.humi ?? 0);
     const h2 = Number(dispositivos.esp2?.humi ?? 0);
 
-    // Cálculo das Médias
     const mediaTemp = (t1 + t2) / 2;
     const mediaHumi = (h1 + h2) / 2;
 
     const novaEntrada = {
       hora: new Date().toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      
-      // Volumes Reais
       gasolina: Number(dispositivos.esp1?.stock ?? 0), 
       unidadesGas: Number(dispositivos.esp2?.stock ?? 0),
-      
-      // Médias para o gráfico
       mediaTemperatura: Number(mediaTemp.toFixed(1)),
       mediaHumidade: Number(mediaHumi.toFixed(1))
     };
@@ -41,14 +38,14 @@ export function MonitoramentoDetalhado() {
     setDadosGrafico(prev => [...prev, novaEntrada].slice(-15)); 
   }, [dispositivos]);
 
-  // Valores médios atuais para os Cards
   const tempMediaAtual = ((Number(dispositivos.esp1?.temp ?? 0) + Number(dispositivos.esp2?.temp ?? 0)) / 2).toFixed(1);
   const humiMediaAtual = ((Number(dispositivos.esp1?.humi ?? 0) + Number(dispositivos.esp2?.humi ?? 0)) / 2).toFixed(1);
 
+  const temFogo = !!(dispositivos.esp1?.fogo || dispositivos.esp2?.fogo);
+  const temGas = !!dispositivos.esp2?.gas;
+
   return (
     <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-[#F8FAFC] p-4 text-left">
-      
-      {/* HEADER */}
       <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 mb-4">
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-[#001140] text-white rounded-xl">
@@ -64,24 +61,16 @@ export function MonitoramentoDetalhado() {
         </button>
       </div>
 
-      {/* GRID DE CARDS COM MÉDIAS */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
         <CardMetrica label="Média Térmica" valor={`${tempMediaAtual}°C`} cor="text-red-600" Icon={Thermometer} />
         <CardMetrica label="Média Humidade" valor={`${humiMediaAtual}%`} cor="text-blue-600" Icon={Droplets} />
-        <CardMetrica 
-            label="Estado Fogo" 
-            valor={(dispositivos.esp1?.fogo || dispositivos.esp2?.fogo) ? "CRÍTICO" : "SEGURO"} 
-            cor={(dispositivos.esp1?.fogo || dispositivos.esp2?.fogo) ? "text-red-600 animate-pulse" : "text-gray-400"} 
-            Icon={Flame} 
-        />
-        <CardMetrica label="Status Gás" valor={dispositivos.esp2?.gas ? "ALERTA" : "NORMAL"} cor={dispositivos.esp2?.gas ? "text-red-500" : "text-green-600"} Icon={Gauge} />
+        <CardMetrica label="Estado Fogo" valor={temFogo ? "CRÍTICO" : "SEGURO"} cor={temFogo ? "text-red-600 animate-pulse" : "text-gray-400"} Icon={Flame} />
+        <CardMetrica label="Status Gás" valor={temGas ? "ALERTA" : "NORMAL"} cor={temGas ? "text-red-500" : "text-green-600"} Icon={Gauge} />
         <CardMetrica label="Total Gasolina" valor={`${dispositivos.esp1?.stock || 0}L`} cor="text-[#001140]" Icon={Fuel} />
         <CardMetrica label="Stock Laranja" valor={`${dispositivos.esp2?.stock || 0} Un`} cor="text-orange-500" Icon={Package} />
       </div>
 
-      {/* GRÁFICOS */}
       <div className="flex-1 grid grid-rows-2 gap-4 min-h-0">
-        
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col min-h-0">
           <span className="text-[11px] font-black text-gray-400 uppercase mb-2 flex items-center gap-2">
             <TrendingUp size={14} /> Performance de Inventário
@@ -124,10 +113,9 @@ export function MonitoramentoDetalhado() {
   );
 }
 
-function CardMetrica({ label, valor, cor, Icon, info }: any) {
+function CardMetrica({ label, valor, cor, Icon }: any) {
   return (
     <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
-      {info && <span className="absolute top-2 right-2 text-[7px] font-bold bg-gray-50 px-1.5 py-0.5 rounded text-gray-400 uppercase">{info}</span>}
       <div className="flex items-center justify-between mb-2">
         <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{label}</span>
         <Icon size={14} className={cor} />

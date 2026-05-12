@@ -71,11 +71,11 @@ export const router = createBrowserRouter([
       { index: true,           element: <LocaTechDashboard /> },
       { path: 'perfil',        element: <PerfilPage /> },
       { path: 'detail/:id',    element: <DefinicoesDashPage /> },
-      { path: 'notificacoes',  element: <NotificacoesPage /> },
       { path: 'salvos',        element: <SavedPostsPage /> },
       // Rotas exclusivas para GESTOR
       { path: 'monitoramento', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><Monitoramento /></ProtectedRoute> },
       { path: 'analise',       element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><MonitoramentoDetalhado /></ProtectedRoute> },
+      { path: 'notificacoes', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><NotificacoesGestor /></ProtectedRoute> },
       { path: 'editar-posto', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><EditarPosto /></ProtectedRoute> },
       { path: 'definicoes',   element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><DefinicoesGestor /></ProtectedRoute> },
     ],

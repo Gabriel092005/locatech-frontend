@@ -1,27 +1,67 @@
 import React, { useState } from 'react';
 import { 
-  Settings2, Gauge, FileText, ChevronRight, Activity, AlertTriangle, X
+  Settings2, Gauge, FileText, ChevronRight, Activity, AlertTriangle 
 } from 'lucide-react';
-import { useSensores } from '../../_layouts/gestor';
+
+// IMPORTAÇÃO: Verifique se o caminho está correto para o seu projeto
+import { useSensores } from '../../../context/SensorContext'; 
+
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
 
 export function DefinicoesGestor() {
-  const { config, setConfig, dispositivos } = useSensores();
-  // Estado para controlar o modal de confirmação
+  const context = useSensores();
+
+
+  // --- BLINDAGEM CONTRA ERRO DE NULL ---
+  const { config, setConfig, dispositivos } = context || {
+    config: {
+      limiteTemp: 35, limiteHumidade: 90, limiteCombustivel: 49,
+      limiteTempGas: 35, limiteHumidadeGas: 90, limiteUnidades: 10, somAtivado: true
+    },
+    setConfig: () => {},
+    dispositivos: {
+      esp1: { stock: 0, temp: 0, humi: 0, fogo: false },
+      esp2: { stock: 0, temp: 0, humi: 0, fogo: false, gas: false }
+    }
+  };
+
   const [showResetModal, setShowResetModal] = useState(false);
 
+  // FUNÇÃO CORRIGIDA: Atualiza o estado global e o localStorage simultaneamente
   const salvarConfig = (chave: string, valor: any) => {
-    setConfig((prev: any) => ({ ...prev, [chave]: valor }));
+    const novaConfig = { ...config, [chave]: valor };
+    setConfig(novaConfig); // Atualiza o contexto global (SensorProvider)
+    localStorage.setItem('@Locatech:config', JSON.stringify(novaConfig));
+    
     toast.success("Parâmetro atualizado", {
       style: { background: '#001140', color: '#fff', fontSize: '11px', borderRadius: '2px' }
     });
   };
 
+  // CORREÇÃO: Resetar apenas configurações sem deslogar o usuário
   const handleResetTotal = () => {
-    localStorage.clear();
-    window.location.reload();
+    const configPadrao = {
+      somAtivado: true,
+      limiteCombustivel: 49,
+      limiteTemp: 35,
+      limiteHumidade: 90,
+      limiteTempGas: 35,
+      limiteHumidadeGas: 90,
+      limiteUnidades: 10
+    };
+    
+    setConfig(configPadrao);
+    localStorage.setItem('@Locatech:config', JSON.stringify(configPadrao));
+    localStorage.removeItem('@Locatech:sensores');
+    
+    setShowResetModal(false);
+    toast.success("Sistema restaurado para o padrão!");
+    
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
   };
 
   const gerarPDF = () => {
@@ -61,7 +101,7 @@ export function DefinicoesGestor() {
       headStyles: { fillColor: [0, 17, 64], fontSize: 10 },
       styles: { fontSize: 9 },
       didParseCell: (data) => {
-        const status = data.cell.text[0];
+        const status = String(data.cell.text[0]);
         const alertas = ["CRÍTICO", "ALTA", "BAIXO", "PERIGO", "ALERTA", "DETECTADO", "SIM"];
         if (data.column.index === 4 && alertas.includes(status)) {
           data.cell.styles.textColor = [200, 0, 0];
@@ -70,56 +110,37 @@ export function DefinicoesGestor() {
       }
     });
 
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text('Relatório gerado automaticamente pelo sistema de monitoramento Locatech – Angola.', 14, 285);
-
     doc.save(`Locatech_Relatorio_Final_${new Date().getTime()}.pdf`);
-    toast.success("PDF gerado com sucesso!");
+    toast.success("PDF gerado!");
   };
 
   return (
-    <div className="flex flex-col h-full bg-white animate-in fade-in duration-300 text-left">
-      {/* MODAL DE CONFIRMAÇÃO ESTILIZADO */}
+    <div className="flex flex-col h-full bg-white animate-in fade-in duration-300 text-left p-6">
+      {/* MODAL DE CONFIRMAÇÃO */}
       {showResetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001140]/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in duration-200">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 text-red-600 rounded-full">
-                  <AlertTriangle size={24} />
-                </div>
-                <h2 className="text-sm font-black text-[#001140] uppercase tracking-tight">Confirmar Reset Total</h2>
+                <div className="p-2 bg-red-100 text-red-600 rounded-full"><AlertTriangle size={24} /></div>
+                <h2 className="text-sm font-black text-[#001140] uppercase">Confirmar Reset de Parâmetros</h2>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                Esta ação irá apagar permanentemente todas as configurações locais e limiares definidos. Deseja continuar?
-              </p>
+              <p className="text-xs text-gray-500 leading-relaxed">Esta ação restaurará os limites e o som para o padrão. A sua conta continuará conectada.</p>
             </div>
             <div className="bg-gray-50 px-6 py-4 flex gap-3">
-              <button 
-                onClick={() => setShowResetModal(false)}
-                className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded text-[10px] font-black uppercase text-gray-400 hover:bg-gray-100 transition-all"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleResetTotal}
-                className="flex-1 px-4 py-2 bg-red-600 rounded text-[10px] font-black uppercase text-white hover:bg-red-700 transition-all shadow-md shadow-red-200"
-              >
-                Limpar Agora
-              </button>
+              <button onClick={() => setShowResetModal(false)} className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded text-[10px] font-black uppercase text-gray-400">Cancelar</button>
+              <button onClick={handleResetTotal} className="flex-1 px-4 py-2 bg-red-600 rounded text-[10px] font-black uppercase text-white shadow-md shadow-red-200">Limpar Agora</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* HEADER */}
       <div className="flex items-center justify-between border-b border-gray-100 pb-6 mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-2 bg-gray-900 text-white rounded">
-            <Settings2 size={20} />
-          </div>
+          <div className="p-2 bg-gray-900 text-white rounded"><Settings2 size={20} /></div>
           <div>
-            <h1 className="text-lg font-black text-[#001140] tracking-tight">TERMINAL DE CONFIGURAÇÕES</h1>
+            <h1 className="text-lg font-black text-[#001140]">TERMINAL DE CONFIGURAÇÕES</h1>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Locatech Operational Control</p>
           </div>
         </div>
@@ -130,61 +151,27 @@ export function DefinicoesGestor() {
           <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center gap-2">
               <Gauge size={14} className="text-gray-400" />
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calibração de Limiares Operacionais</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase">Calibração de Limiares Operacionais</span>
             </div>
             
-            <div className="divide-y divide-gray-100">
-              <div className="p-6">
+            <div className="divide-y divide-gray-100 p-6 space-y-8">
+               {/* Inputs de Configuração - Tanque A */}
+               <div>
                 <h3 className="text-[10px] font-black text-[#001140] uppercase mb-4 opacity-50">Setpoints: Tanque A Gasolina</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Temp. Crítica (°C)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteTemp || 35} onChange={(e) => setConfig({...config, limiteTemp: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteTemp', config.limiteTemp)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Humidade Máx (%)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteHumidade || 90} onChange={(e) => setConfig({...config, limiteHumidade: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteHumidade', config.limiteHumidade)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Nível Mínimo (L)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteCombustivel || 49} onChange={(e) => setConfig({...config, limiteCombustivel: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteCombustivel', config.limiteCombustivel)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
+                  <InputConfig label="Temp. Crítica (°C)" value={config.limiteTemp} onChange={(v: number) => setConfig({...config, limiteTemp: v})} onSet={() => salvarConfig('limiteTemp', config.limiteTemp)} />
+                  <InputConfig label="Humidade Máx (%)" value={config.limiteHumidade} onChange={(v: number) => setConfig({...config, limiteHumidade: v})} onSet={() => salvarConfig('limiteHumidade', config.limiteHumidade)} />
+                  <InputConfig label="Nível Mínimo (L)" value={config.limiteCombustivel} onChange={(v: number) => setConfig({...config, limiteCombustivel: v})} onSet={() => salvarConfig('limiteCombustivel', config.limiteCombustivel)} />
                 </div>
               </div>
 
-              <div className="p-6 bg-gray-50/30">
+              {/* Inputs de Configuração - Stock Laranja */}
+              <div className="pt-4">
                 <h3 className="text-[10px] font-black text-[#001140] uppercase mb-4 opacity-50">Setpoints: Stock Laranja (Gás)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Temp. Máxima (°C)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteTempGas || 35} onChange={(e) => setConfig({...config, limiteTempGas: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteTempGas', config.limiteTempGas)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Humidade Máx (%)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteHumidadeGas || 90} onChange={(e) => setConfig({...config, limiteHumidadeGas: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteHumidadeGas', config.limiteHumidadeGas)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Stock Mínimo (Un)</label>
-                    <div className="flex gap-1">
-                      <input type="number" value={config.limiteUnidades || 10} onChange={(e) => setConfig({...config, limiteUnidades: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono" />
-                      <button onClick={() => salvarConfig('limiteUnidades', config.limiteUnidades)} className="bg-[#001140] text-white px-3 rounded text-[9px] font-bold">SET</button>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputConfig label="Temp. Máxima (°C)" value={config.limiteTempGas} onChange={(v: number) => setConfig({...config, limiteTempGas: v})} onSet={() => salvarConfig('limiteTempGas', config.limiteTempGas)} />
+                  <InputConfig label="Humidade Máx (%)" value={config.limiteHumidadeGas} onChange={(v: number) => setConfig({...config, limiteHumidadeGas: v})} onSet={() => salvarConfig('limiteHumidadeGas', config.limiteHumidadeGas)} />
+                  <InputConfig label="Stock Mínimo (Un)" value={config.limiteUnidades} onChange={(v: number) => setConfig({...config, limiteUnidades: v})} onSet={() => salvarConfig('limiteUnidades', config.limiteUnidades)} />
                 </div>
               </div>
             </div>
@@ -193,44 +180,64 @@ export function DefinicoesGestor() {
           <div className="border border-gray-200 rounded-lg p-6 bg-[#FBFBFC]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-white border border-gray-200 rounded flex items-center justify-center text-[#001140] shadow-sm">
-                  <FileText size={24} />
-                </div>
+                <div className="h-12 w-12 bg-white border border-gray-200 rounded flex items-center justify-center text-[#001140] shadow-sm"><FileText size={24} /></div>
                 <div>
                   <h3 className="text-sm font-bold text-[#001140]">Relatórios Técnicos</h3>
                   <p className="text-[11px] text-gray-400 font-medium">Exportar status atual dos ativos para PDF.</p>
                 </div>
               </div>
-              <button onClick={gerarPDF} className="flex items-center gap-2 bg-white border border-gray-300 px-6 py-2.5 rounded text-[11px] font-black uppercase hover:border-[#001140] transition-all shadow-sm">
+              <button 
+                onClick={gerarPDF} 
+                className="flex items-center gap-2 bg-[#001140] text-white px-6 py-2.5 rounded text-[11px] font-black uppercase hover:bg-black transition-all shadow-md"
+              >
                 Download PDF <ChevronRight size={14}/>
               </button>
             </div>
           </div>
         </div>
 
+        {/* Sidebar de Sistema */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
           <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <Activity size={14} /> Sistema
-            </h2>
+            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Activity size={14} /> Sistema</h2>
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded border border-gray-100">
               <span className="text-xs font-bold text-[#001140]">Alertas Sonoros</span>
-              <button onClick={() => salvarConfig('somAtivado', !config.somAtivado)} className={`w-10 h-5 rounded-full relative transition-all ${config.somAtivado ? 'bg-green-600' : 'bg-gray-300'}`}>
+              <button 
+                onClick={() => salvarConfig('somAtivado', !config.somAtivado)} 
+                className={`w-10 h-5 rounded-full relative transition-all ${config.somAtivado ? 'bg-green-600' : 'bg-gray-300'}`}
+              >
                 <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${config.somAtivado ? 'right-1' : 'left-1'}`} />
               </button>
             </div>
           </div>
 
           <div className="bg-red-50/30 border border-red-100 rounded-lg p-6">
-            <h2 className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-2">Danger Zone</h2>
-            <button 
-              onClick={() => setShowResetModal(true)}
-              className="w-full py-2 bg-white border border-red-200 text-red-600 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm"
-            >
-              Reset Total do Sistema
-            </button>
+            <h2 className="text-[10px] font-black text-red-600 uppercase mb-2">Danger Zone</h2>
+            <button onClick={() => setShowResetModal(true)} className="w-full py-2 bg-white border border-red-200 text-red-600 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">Reset Total do Sistema</button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function InputConfig({ label, value, onChange, onSet }: any) {
+  return (
+    <div className="flex flex-col">
+      <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">{label}</label>
+      <div className="flex gap-1">
+        <input 
+          type="number" 
+          value={value} 
+          onChange={(e) => onChange(Number(e.target.value))} 
+          className="w-full bg-white border border-gray-300 rounded px-3 py-1.5 text-xs font-bold text-slate-900 focus:border-[#001140] focus:ring-1 focus:ring-[#001140] outline-none transition-all" 
+        />
+        <button 
+          onClick={onSet} 
+          className="bg-[#001140] text-white px-4 rounded text-[10px] font-black uppercase hover:bg-black transition-colors"
+        >
+          SET
+        </button>
       </div>
     </div>
   );

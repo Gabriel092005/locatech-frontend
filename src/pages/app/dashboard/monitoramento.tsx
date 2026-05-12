@@ -4,6 +4,8 @@ import { Thermometer, Droplets, Flame, Gauge } from 'lucide-react';
 export function Monitoramento() {
   // Pegamos os dados do contexto global (SensorProvider)
   const context = useSensores();
+
+  console.log(context)
   
   // PROTEÇÃO: Se o contexto ou dispositivos não existirem, mostra loading
   if (!context || !context.dispositivos) {

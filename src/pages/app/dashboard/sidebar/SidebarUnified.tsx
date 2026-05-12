@@ -1,8 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import type { ComponentType } from "react";
-import { io, Socket } from "socket.io-client";
-import { api } from "@/lib/axios";
+import { useSensores } from "../../../_layouts/gestor";
 
 // ── Icons ─────────────────────────────────────────────────────────────
 function IUser({ className = "w-5 h-5" }: { className?: string }) {
@@ -83,13 +81,11 @@ function IBookmark({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-// ── Navigation items with permissions ────────────────────────────────────────────
-
 interface NavItem {
   to: string;
   label: string;
   Icon: (props: { className?: string }) => JSX.Element;
-  roles: ('MEMBER' | 'GESTOR' | 'ADMIN')[]; // Who can see this item
+  roles: ('MEMBER' | 'GESTOR' | 'ADMIN')[];
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
@@ -102,11 +98,10 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: "/dashboard/definicoes", label: "Definições", Icon: ISettings, roles: ['GESTOR', 'ADMIN'] },
 ];
 
-// ── Sidebar Component ────────────────────────────────────────────────────────────
-
 export function SidebarUnified() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const location = useLocation();
+  const { temNotificacaoNova, setTemNotificacaoNova } = useSensores();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -120,58 +115,17 @@ export function SidebarUnified() {
     }
   }, []);
 
-  // ── Socket.IO for real-time notifications ─────────────────────────────
-  const [unreadCount, setUnreadCount] = useState(0);
-  
+  // AUTO-LIMPEZA: Se o usuário entrar na página de notificações, o ponto some
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    const socket: Socket = io("http://localhost:3001", {
-      auth: { token },
-      transports: ["websocket"],
-    });
-
-    // Get user ID from token to join room
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub;
-      
-      socket.emit("register", userId);
-
-      // Listen for new notifications
-      socket.on("nova_notificacao", (data) => {
-        console.log("Nova notificação recebida:", data);
-        setUnreadCount((prev) => prev + 1);
-      });
-    } catch (err) {
-      console.error("Erro ao conectar socket:", err);
+    if (location.pathname === '/dashboard/notificacoes') {
+      setTemNotificacaoNova(false);
     }
+  }, [location.pathname, setTemNotificacaoNova]);
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Fetch initial notification count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const { data } = await api.get<{ notifications: any[] }>("/notif");
-        setUnreadCount(data.notifications?.length || 0);
-      } catch (err) {
-        console.error("Erro ao buscar notificações:", err);
-      }
-    };
-    fetchUnreadCount();
-  }, []);
-
-  // Filter items based on user role
   const visibleItems = ALL_NAV_ITEMS.filter(item => 
     !userRole || item.roles.includes(userRole as any)
   );
 
-  // Check if current path matches (for nested routes)
   const isActivePath = (path: string) => {
     if (path === "/dashboard" && location.pathname === "/dashboard") return true;
     return location.pathname.startsWith(path);
@@ -179,14 +133,12 @@ export function SidebarUnified() {
 
   return (
     <div className="flex flex-col w-full h-full bg-[#001140]">
-      {/* Brand */}
       <div className="px-7 pt-8 pb-7 select-none">
         <span className="text-white font-black text-[22px] tracking-tight">
           Loca<span className="text-amber-400">tech</span>
         </span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex flex-col gap-1 flex-1 px-3">
         {visibleItems.map(({ to, label, Icon }) => (
           <NavLink
@@ -205,28 +157,28 @@ export function SidebarUnified() {
           >
             {({ isActive }) => (
               <>
-                <Icon
-                  className={[
-                    "w-[18px] h-[18px] shrink-0 transition-colors",
-                    isActive
-                      ? "text-white"
-                      : "text-white/45 group-hover:text-white/70",
-                  ].join(" ")}
-                />
+                <div className="relative flex items-center justify-center">
+                  <Icon
+                    className={[
+                      "w-[18px] h-[18px] shrink-0 transition-colors",
+                      isActive
+                        ? "text-white"
+                        : "text-white/45 group-hover:text-white/70",
+                    ].join(" ")}
+                  />
+                  
+                  {/* PONTINHO VERMELHO DE NOTIFICAÇÃO NO ÍCONE DO BELL */}
+                  {label === "Notificações" && temNotificacaoNova && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-[#001140] animate-pulse" />
+                  )}
+                </div>
                 <span>{label}</span>
-                {/* Badge para notificações */}
-                {to === "/dashboard/notificacoes" && unreadCount > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      {/* Footer with role info */}
       <div className="px-4 py-4 border-t border-white/10">
         <p className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">
           {userRole === 'GESTOR' ? 'Gestor' : userRole === 'ADMIN' ? 'Admin' : 'Membro'}
