@@ -84,8 +84,9 @@ function postoToStation(p: PostoAPI): Station {
 }
 
 function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number } | null, showRoute?: boolean): string {
-  if (showRoute && userLocation && station.latitude && station.longitude) {
-    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed&travelmode=driving`;
+  if (userLocation && station.latitude && station.longitude) {
+    const travelMode = showRoute ? "&travelmode=driving" : "";
+    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed${travelMode}`;
   }
   if (station.latitude && station.longitude) {
     return `https://maps.google.com/maps?q=${station.latitude},${station.longitude}&z=15&output=embed`;
@@ -881,9 +882,9 @@ export default function LocaTechDashboard() {
   if (loading) return <LoadingScreen />;
   if (!selected) return <EmptyScreen onRetry={loadAll} />;
 
-  const podeTraçarRota = !!(userLocation && selected.latitude && selected.longitude);
-  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && podeTraçarRota);
-  const routeInfo = podeTraçarRota && showRoute
+  const temLocalizacao = !!(userLocation && selected.latitude && selected.longitude);
+  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && temLocalizacao);
+  const routeInfo = temLocalizacao && showRoute
     ? calculateRouteInfo(userLocation!.lat, userLocation!.lng, selected.latitude!, selected.longitude!)
     : null;
   const isSaved = savedIds.has(selected.id);
@@ -903,6 +904,19 @@ export default function LocaTechDashboard() {
             src={mapUrl}
           />
           <MapPopup station={selected} />
+
+          {/* Minha localização - badge quando localização está ativa no mapa */}
+          {userLocation && selected.latitude && selected.longitude && !showRoute && (
+            <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-3.5 py-2 shadow-xl border border-white/80 flex items-center gap-2.5 pointer-events-none">
+              <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-slate-800">Tu estás aqui</p>
+                <p className="text-[9px] text-slate-400 font-medium">Marcador A no mapa</p>
+              </div>
+            </div>
+          )}
 
           {/* Rota Info Overlay */}
           {routeInfo && (
