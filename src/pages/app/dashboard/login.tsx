@@ -299,12 +299,13 @@ export default function LoginPage() {
 
             <p className="text-center text-[12px] sm:text-[12.5px] text-slate-500">
               Não tens conta?{" "}
-              <a
-                href="/sign-up-gestor"
-                className="font-bold text-[#0d1b3e] hover:text-[#2d3d6b] underline underline-offset-2 transition-colors"
+              <button
+                type="button"
+                onClick={() => navigate('/auth/select-type')}
+                className="font-bold text-[#0d1b3e] hover:text-[#2d3d6b] underline underline-offset-2 transition-colors bg-transparent border-none p-0 cursor-pointer inline"
               >
-                Registar como Gestor
-              </a>
+                Criar conta
+              </button>
             </p>
           </div>
 

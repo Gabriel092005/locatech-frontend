@@ -4,21 +4,17 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthLayoutPacient } from './pages/_layouts/auth';
 import { AppLayoutAdmin } from './pages/_layouts/app';
 import { SimpleLayout } from './pages/_layouts/simple';
-import { GestorLayout } from './pages/_layouts/gestor';
 
 // Páginas
-import { SignUpGestor } from './pages/auth/sign-up';
 import { Home } from './pages/auth/lading-page';
 import { SelectAccountType } from './pages/auth/accountType';
-import { SignUpCliente } from './pages/auth/sign-up-cliente';
+import { SignUpUnificado } from './pages/auth/sign-up-unificado';
 import { SuccessAccount } from './pages/auth/succseeAccount';
 import { ErrorAccount } from './pages/auth/errorAccount';
 import LocaTechDashboard from './pages/app/dashboard/dasboard';
-import NotificacoesPage from './pages/app/dashboard/notificacoes';
 import { NotificacoesGestor } from './pages/app/dashboard/notificacoes-gestor';
 import DefinicoesDashPage from './pages/app/dashboard/dasboard-details';
 import PerfilPage from './pages/app/dashboard/perfil';
-import { PerfilGestor } from './pages/app/dashboard/perfil-gestor';
 import { EditarPosto } from './pages/app/dashboard/editar-posto';
 import { Monitoramento } from './pages/app/dashboard/monitoramento';
 import { DefinicoesGestor } from './pages/app/dashboard/definicoes-gestor'; 
@@ -48,8 +44,7 @@ export const router = createBrowserRouter([
       { path: 'login',             element: <LoginPage /> },
       { path: 'landing',           element: <Home /> },
       { path: 'select-type',       element: <SelectAccountType /> },
-      { path: 'sign-up-cliente',  element: <SignUpCliente /> },
-      { path: 'sign-up-gestor',    element: <SignUpGestor /> },
+      { path: 'sign-up',           element: <SignUpUnificado /> },
       { path: 'success',           element: <SuccessAccount /> },
       { path: 'error',             element: <ErrorAccount /> },
     ],
