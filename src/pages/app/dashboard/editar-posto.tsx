@@ -90,6 +90,12 @@ export function EditarPosto() {
   const [novoQuantidade, setNovoQuantidade] = useState('');
   const [addingStock, setAddingStock] = useState(false);
 
+  // Create new product type
+  const [criarNovoProduto, setCriarNovoProduto] = useState(false);
+  const [novoProdutoNome, setNovoProdutoNome] = useState('');
+  const [novoProdutoUnidade, setNovoProdutoUnidade] = useState('L');
+  const [criandoProduto, setCriandoProduto] = useState(false);
+
   // ── Load data ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -204,6 +210,31 @@ export function EditarPosto() {
       setError(err?.response?.data?.message || 'Erro ao salvar stock.');
     } finally {
       setSaving(null);
+    }
+  }
+
+  // ── Create new product type ────────────────────────────────────────────
+
+  async function handleCriarProdutoEAdicionar() {
+    if (!novoProdutoNome.trim()) return;
+    setCriandoProduto(true);
+    setError(null);
+    try {
+      const { data } = await api.post('/produtos', {
+        nome: novoProdutoNome.trim(),
+        unidade_medida: novoProdutoUnidade,
+      });
+      const produtoNovo: Produto = data.produto;
+      setProdutosDisponiveis((prev) => [...prev, produtoNovo]);
+      setNovoProdutoId(produtoNovo.id);
+      setCriarNovoProduto(false);
+      setNovoProdutoNome('');
+      setSuccess(`Produto "${produtoNovo.nome}" criado! Agora define o preço.`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao criar produto.');
+    } finally {
+      setCriandoProduto(false);
     }
   }
 
@@ -454,43 +485,96 @@ export function EditarPosto() {
 
             {/* Adicionar novo produto */}
             <div>
-              <h3 className="font-bold text-slate-700 text-xs mb-3 flex items-center gap-2">
-                <Plus className="w-3.5 h-3.5 text-[#0d1b3e]" />
-                Adicionar Novo Produto
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-slate-700 text-xs flex items-center gap-2">
+                  <Plus className="w-3.5 h-3.5 text-[#0d1b3e]" />
+                  Adicionar Produto
+                </h3>
+                <button
+                  onClick={() => { setCriarNovoProduto(!criarNovoProduto); setNovoProdutoId(''); }}
+                  className="text-[10px] font-bold text-[#0d1b3e] hover:underline flex items-center gap-1"
+                >
+                  {criarNovoProduto ? 'Usar existente' : 'Criar novo tipo'}
+                </button>
+              </div>
 
-              {produtosFiltrados.length === 0 ? (
-                <div className="bg-slate-50 rounded-xl p-4 text-center">
-                  <p className="text-[11px] text-slate-400 font-medium">Todos os produtos já foram adicionados a este posto.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Produto</label>
-                    <select value={novoProdutoId} onChange={(e) => setNovoProdutoId(e.target.value ? Number(e.target.value) : '')}
-                      className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all">
-                      <option value="">Selecionar produto...</option>
-                      {produtosFiltrados.map((prod) => (
-                        <option key={prod.id} value={prod.id}>{prod.nome} ({prod.unidade_medida})</option>
-                      ))}
-                    </select>
+              {criarNovoProduto ? (
+                /* ── Criar novo tipo de produto ── */
+                <div className="space-y-3 bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Nome do Produto</label>
+                      <input type="text" value={novoProdutoNome} onChange={(e) => setNovoProdutoNome(e.target.value)}
+                        placeholder="Ex: Etanol" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Unidade</label>
+                      <select value={novoProdutoUnidade} onChange={(e) => setNovoProdutoUnidade(e.target.value)}
+                        className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all">
+                        <option value="L">L (Litros)</option>
+                        <option value="Kg">Kg (Quilogramas)</option>
+                        <option value="UN">UN (Unidades)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
-                      <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
+                      <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
                     </div>
                     <div>
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade (L)</label>
-                      <input type="number" step="0.1" min="0" value={novoQuantidade} onChange={(e) => setNovoQuantidade(e.target.value)} placeholder="0" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade</label>
+                      <input type="number" step="0.1" min="0" value={novoQuantidade} onChange={(e) => setNovoQuantidade(e.target.value)} placeholder="0" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
                     </div>
                   </div>
 
-                  <button onClick={handleAddStock} disabled={!novoProdutoId || !novoPreco || addingStock}
-                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm">
-                    {addingStock ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Adicionando...</> : <><Plus className="w-3.5 h-3.5" /> Adicionar Produto</>}
+                  <button onClick={handleCriarProdutoEAdicionar} disabled={!novoProdutoNome.trim() || !novoPreco || criandoProduto}
+                    className="w-full py-2.5 bg-[#0d1b3e] hover:bg-[#162251] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    {criandoProduto ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Criando...</> : <><Plus className="w-3.5 h-3.5" /> Criar e Adicionar</>}
                   </button>
+                </div>
+              ) : (
+                /* ── Selecionar produto existente ── */
+                <div className="space-y-3">
+                  {produtosFiltrados.length === 0 ? (
+                    <div className="bg-slate-50 rounded-xl p-4 text-center">
+                      <p className="text-[11px] text-slate-400 font-medium">Todos os produtos já foram adicionados.</p>
+                      <button onClick={() => setCriarNovoProduto(true)}
+                        className="mt-2 text-[11px] font-bold text-[#0d1b3e] hover:underline">
+                        Criar novo tipo de produto
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Produto</label>
+                        <select value={novoProdutoId} onChange={(e) => setNovoProdutoId(e.target.value ? Number(e.target.value) : '')}
+                          className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all">
+                          <option value="">Selecionar produto...</option>
+                          {produtosFiltrados.map((prod) => (
+                            <option key={prod.id} value={prod.id}>{prod.nome} ({prod.unidade_medida})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
+                          <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade</label>
+                          <input type="number" step="0.1" min="0" value={novoQuantidade} onChange={(e) => setNovoQuantidade(e.target.value)} placeholder="0" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
+                        </div>
+                      </div>
+
+                      <button onClick={handleAddStock} disabled={!novoProdutoId || !novoPreco || addingStock}
+                        className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                        {addingStock ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Adicionando...</> : <><Plus className="w-3.5 h-3.5" /> Adicionar Produto</>}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
