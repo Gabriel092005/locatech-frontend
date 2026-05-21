@@ -422,6 +422,7 @@ interface NovoPostoForm {
   nif: string;
   tipo: TipoPostoEnum;
   endereco: string;
+  horario_funcionamento: string;
   gestorId: string;
   latitude: string;
   longitude: string;
@@ -434,6 +435,7 @@ const FORM_INITIAL: NovoPostoForm = {
   nif: "",
   tipo: "MISTO",
   endereco: "",
+  horario_funcionamento: "",
   gestorId: "",
   latitude: "",
   longitude: "",
@@ -517,6 +519,7 @@ function NovoPostoDialog({
       if (form.gestorId) body.append("gestorId", form.gestorId.trim());
       if (form.latitude)  body.append("latitude",  form.latitude);
       if (form.longitude) body.append("longitude", form.longitude);
+      if (form.horario_funcionamento) body.append("horario_funcionamento", form.horario_funcionamento.trim());
       if (form.alvara)    body.append("alvara",    form.alvara);
 
       const { data } = await api.post<PostoAPI>("/postos", body, {
@@ -595,6 +598,7 @@ function NovoPostoDialog({
 
           <InputField label="Nome do Posto" name="nome" value={form.nome} onChange={handleChange} placeholder="Ex: Posto Sonangol Talatona" required />
           <InputField label="Endereço" name="endereco" value={form.endereco} onChange={handleChange} placeholder="Ex: Via AL4, Luanda" required />
+          <InputField label="Horário de funcionamento" name="horario_funcionamento" value={form.horario_funcionamento} onChange={handleChange} placeholder="Ex: 07h–22h" />
 
           <div className="grid grid-cols-2 gap-3">
             <InputField label="Email institucional" name="email_institucional" value={form.email_institucional} onChange={handleChange} type="email" placeholder="posto@empresa.ao" />
