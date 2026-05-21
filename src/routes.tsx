@@ -14,6 +14,7 @@ import { ErrorAccount } from './pages/auth/errorAccount';
 import LocaTechDashboard from './pages/app/dashboard/dasboard';
 import { NotificacoesGestor } from './pages/app/dashboard/notificacoes-gestor';
 import DefinicoesDashPage from './pages/app/dashboard/dasboard-details';
+import PerfilPage from './pages/app/dashboard/perfil';
 import { EditarPosto } from './pages/app/dashboard/editar-posto';
 import { Monitoramento } from './pages/app/dashboard/monitoramento';
 import { DefinicoesGestor } from './pages/app/dashboard/definicoes-gestor'; 
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
     </ProtectedRoute>,
     children: [
       { index: true,           element: <LocaTechDashboard /> },
+      { path: 'perfil',        element: <PerfilPage /> },
       { path: 'detail/:id',    element: <DefinicoesDashPage /> },
       { path: 'salvos',        element: <SavedPostsPage /> },
       // Rotas exclusivas para GESTOR
