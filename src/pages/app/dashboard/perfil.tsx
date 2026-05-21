@@ -365,7 +365,7 @@ export default function PerfilPage() {
 
           {loadingUser ? (
             <div className="grid grid-cols-2 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
