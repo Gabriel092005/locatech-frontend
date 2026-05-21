@@ -905,7 +905,7 @@ export default function LocaTechDashboard() {
             allowFullScreen
             src={mapUrl}
           />
-          <MapPopup station={selected} />
+          {!showRoute && <MapPopup station={selected} />}
 
           {/* Minha localização - badge quando localização está ativa no mapa */}
           {userLocation && selected.latitude && selected.longitude && !showRoute && (
@@ -920,8 +920,8 @@ export default function LocaTechDashboard() {
             </div>
           )}
 
-          {/* Rota Info Overlay */}
-          {routeInfo && (
+          {/* Rota Info Overlay — só quando rota NÃO está ativa */}
+          {!showRoute && routeInfo && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border border-white/80 flex items-center gap-5">
               <div className="flex items-center gap-2">
                 <INavigate className="w-4 h-4 text-[#0d1b3e]" />
@@ -949,6 +949,14 @@ export default function LocaTechDashboard() {
               >
                 Abrir no Google Maps
               </a>
+            </div>
+          )}
+
+          {/* Rota Info — badge minimalista no canto quando rota ativa */}
+          {showRoute && routeInfo && (
+            <div className="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 pointer-events-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Rota ativa · {routeInfo.distance.toFixed(1)} km
             </div>
           )}
 
@@ -1059,8 +1067,8 @@ export default function LocaTechDashboard() {
               </div>
             </div>
 
-            {/* Rota Info */}
-            {routeInfo && (
+            {/* Rota Info — só visível quando rota NÃO está ativa no mapa */}
+            {routeInfo && !showRoute && (
               <div className="flex items-center gap-4 bg-white/70 rounded-xl px-4 py-2.5 mb-3 border border-slate-200/60">
                 <div className="flex items-center gap-2">
                   <INavigate className="w-4 h-4 text-[#0d1b3e]" />
