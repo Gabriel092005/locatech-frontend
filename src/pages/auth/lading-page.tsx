@@ -1,10 +1,18 @@
 import { useNavigate } from "react-router-dom";
+import { usuarioAutenticado } from "@/lib/auth";
 
 export function Home() {
   const navigate = useNavigate();
 
+  function handleComecar() {
+    if (usuarioAutenticado()) {
+      navigate('/dashboard', { replace: true });
+    } else {
+      navigate('/auth/select-type');
+    }
+  }
+
   return (
-    /* Card de Vidro com arredondamento e sombra pesada */
     <div className="w-full max-w-[900px] bg-white/10 backdrop-blur-md rounded-[60px] p-16 shadow-2xl border border-white/5 flex flex-col items-center text-center">
       <h1 className="text-white text-2xl md:text-3xl font-black leading-[1.2] tracking-normal mb-10 max-w-[750px]">
         LOCATECH - SISTEMA DE LOCALIZAÇÃO DE POSTOS DE COMBUSTÍVEIS E DISTRIBUIDORES DE GÁS BUTANO
@@ -14,7 +22,7 @@ export function Home() {
         DE COMBUSTÍVEIS E DISTRIBUIDORES DE GÁS BUTANO EM TEMPO REAL
       </p>
       <button 
-        onClick={() => navigate('/auth/select-type')}
+        onClick={handleComecar}
         className="w-[320px] h-16 bg-[#05267B] hover:bg-[#031b58] transition-all rounded-full text-white font-bold text-2xl shadow-2xl active:scale-95 uppercase tracking-[0.1em]"
       >
         COMEÇAR

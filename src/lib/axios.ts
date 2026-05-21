@@ -7,12 +7,8 @@ export const api = axios.create({
   withCredentials: true
 });
 
-// Interceptor para adicionar o token
 api.interceptors.request.use(config => {
-const token = document.cookie
-  .split('; ')
-  .find(row => row.startsWith('token='))
-  ?.split('=')[1];
+  const token = localStorage.getItem("token");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -20,13 +16,15 @@ const token = document.cookie
   return config;
 });
 
-// Tratamento de erros
+let redirecting = false;
+
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
-      // Redirecionar para login ou renovar token
-      window.location.href = '/sign-in';
+    if (error.response?.status === 401 && !redirecting) {
+      redirecting = true;
+      localStorage.removeItem('token');
+      window.location.href = '/';
     }
     return Promise.reject(error);
   }

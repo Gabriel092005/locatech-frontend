@@ -1,6 +1,7 @@
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
-
+import { usuarioAutenticado } from "@/lib/auth";
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -119,10 +120,16 @@ function Field({
 }
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
   const [status, setStatus] = useState<LoginStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [jaAutenticado, setJaAutenticado] = useState(false);
+
+  useEffect(() => {
+    setJaAutenticado(usuarioAutenticado());
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -162,6 +169,50 @@ export default function LoginPage() {
   }
 
   const isLoading = status === "loading";
+
+  if (jaAutenticado) {
+    return (
+      <div className="min-h-screen bg-[#edf0f4] flex flex-col">
+        <div className="h-1.5 bg-gradient-to-r from-[#0d1b3e] via-[#2d3d6b] to-[#0d1b3e]" />
+        <div className="flex-1 flex items-center justify-center px-3 sm:px-4 py-8 sm:py-12">
+          <div className="w-full max-w-[400px] flex flex-col items-center gap-6 text-center">
+            <LocaTechLogo />
+            <div className="bg-[#dde1e7] rounded-2xl px-8 py-10 shadow-sm flex flex-col items-center gap-5 w-full">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+              <h1 className="font-black text-xl sm:text-2xl text-slate-900">
+                Já estás autenticado
+              </h1>
+              <p className="text-sm text-slate-500">
+                A tua sessão ainda está ativa. Podes ir directamente para o painel.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full bg-[#0d1b3e] hover:bg-[#162251] text-white font-bold text-[13px] sm:text-[14px] py-3 sm:py-3.5 rounded-xl transition-all hover:-translate-y-0.5 active:scale-[0.99] shadow-md shadow-[#0d1b3e]/20"
+              >
+                Ir para o Dashboard
+              </button>
+              <button
+                onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
+                className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors"
+              >
+                Usar outra conta
+              </button>
+            </div>
+          </div>
+        </div>
+        <footer className="bg-[#0d1b3e] h-10 sm:h-11 flex items-center justify-center px-2">
+          <p className="text-white/40 text-[10px] sm:text-[11px] font-semibold tracking-widest uppercase text-center">
+            © 2026 LocaTech – Informação Certa Combustível e Gás Sem Stress
+          </p>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#edf0f4] flex flex-col">
