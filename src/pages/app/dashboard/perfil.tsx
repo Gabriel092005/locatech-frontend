@@ -1,9 +1,9 @@
-﻿import { useRef, useState, useEffect, ChangeEvent } from "react";
+import { useRef, useState, useEffect, ChangeEvent } from "react";
 import { api } from "@/lib/axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fazerLogout } from "@/lib/auth";
 
-// ΓöÇΓöÇ Types ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface UserMe {
   id: number;
@@ -17,7 +17,7 @@ interface UserMe {
 
 type UpdateStatus = "idle" | "loading" | "success" | "error";
 
-// ΓöÇΓöÇ Icons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function IUser({ className = "w-12 h-12" }: { className?: string }) {
   return (
@@ -69,7 +69,7 @@ function ITrash({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-// ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function avatarUrl(path: string | null): string | null {
   if (!path) return null;
@@ -79,13 +79,13 @@ function avatarUrl(path: string | null): string | null {
   return `http://localhost:3001/uploads/${path}`;
 }
 
-// ΓöÇΓöÇ Skeleton ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-slate-300/60 rounded-xl ${className}`} />;
 }
 
-// ΓöÇΓöÇ Confirm Dialog ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Confirm Dialog ────────────────────────────────────────────────────────────
 
 function ConfirmDialog({
   message,
@@ -124,7 +124,7 @@ function ConfirmDialog({
   );
 }
 
-// ΓöÇΓöÇ Toast ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Toast ─────────────────────────────────────────────────────────────────────
 
 function Toast({ message, type }: { message: string; type: "success" | "error" }) {
   return (
@@ -139,13 +139,13 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
   );
 }
 
-// ΓöÇΓöÇ Main Page ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PerfilPage() {
   const fileRef     = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
-  // ΓöÇΓöÇ React Query ΓÇö /me ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── React Query — /me ──────────────────────────────────────────────────────
   const {
     data: user,
     isLoading: loadingUser,
@@ -160,7 +160,7 @@ export default function PerfilPage() {
 
   console.log('fff',user)
 
-  // ΓöÇΓöÇ State ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── State ──────────────────────────────────────────────────────────────────
   const [preview,      setPreview]      = useState<string | null>(null);
   const [avatarFile,   setAvatarFile]   = useState<File | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<UpdateStatus>("idle");
@@ -178,7 +178,7 @@ export default function PerfilPage() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // ΓöÇΓöÇ Preenche o formul├írio quando o user carrega ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Preenche o formulário quando o user carrega ────────────────────────────
   useEffect(() => {
     if (!user) return;
     setForm({
@@ -190,7 +190,7 @@ export default function PerfilPage() {
     });
   }, [user]);
 
-  // ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -199,7 +199,7 @@ export default function PerfilPage() {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // ΓöÇΓöÇ Avatar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Avatar ─────────────────────────────────────────────────────────────────
   function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -213,7 +213,7 @@ export default function PerfilPage() {
     try {
       const body = new FormData();
       body.append("image", avatarFile);
-      // N├úo definir Content-Type manualmente - o browser define com boundary correto
+      // Não definir Content-Type manualmente - o browser define com boundary correto
       const { data } = await api.patch("/me/avatar", body);
       
       console.log('[Frontend] Resposta upload avatar:', data);
@@ -221,9 +221,9 @@ export default function PerfilPage() {
       // Invalida o cache para re-buscar o user com a nova foto
       await queryClient.invalidateQueries({ queryKey: ["user-me"] });
       
-      // For├ºa recarregamento imediato do user
+      // Força recarregamento imediato do user
       const { data: userData } = await api.get<UserMe>("/me");
-      console.log('[Frontend] User ap├│s upload:', userData);
+      console.log('[Frontend] User após upload:', userData);
       
       setAvatarFile(null);
       setPreview(null);
@@ -238,7 +238,7 @@ export default function PerfilPage() {
     }
   }
 
-  // ΓöÇΓöÇ Update info ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Update info ────────────────────────────────────────────────────────────
   async function handleUpdate() {
     setUpdateStatus("loading");
     try {
@@ -260,7 +260,7 @@ export default function PerfilPage() {
       await queryClient.invalidateQueries({ queryKey: ["user-me"] });
       setForm((prev) => ({ ...prev, oldPassword: "", newPassword: "" }));
       setUpdateStatus("success");
-      showToast("Informa├º├╡es actualizadas!", "success");
+      showToast("Informações actualizadas!", "success");
     } catch (err: any) {
       setUpdateStatus("error");
       showToast(err?.response?.data?.message ?? "Erro ao actualizar.", "error");
@@ -269,12 +269,12 @@ export default function PerfilPage() {
     }
   }
 
-  // ΓöÇΓöÇ Logout ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Logout ─────────────────────────────────────────────────────────────────
   function handleLogout() {
     fazerLogout();
   }
 
-  // ΓöÇΓöÇ Delete account ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Delete account ─────────────────────────────────────────────────────────
   async function handleDeleteAccount() {
     try {
       await api.delete("/me");
@@ -284,11 +284,11 @@ export default function PerfilPage() {
     }
   }
 
-  // ΓöÇΓöÇ Avatar src ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Avatar src ─────────────────────────────────────────────────────────────
   const imgSrc = preview ?? avatarUrl(user?.image_path ?? null);
   console.log('Avatar debug - image_path:', user?.image_path, '| imgSrc:', imgSrc);
 
-  // ΓöÇΓöÇ Render ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-full bg-[#edf0f4] flex flex-col">
 
@@ -306,7 +306,7 @@ export default function PerfilPage() {
 
       <div className="flex-1 px-8 pb-8 pt-4 flex flex-col gap-5">
 
-        {/* Card ΓÇô Avatar */}
+        {/* Card – Avatar */}
         <div className="bg-[#dde1e7] rounded-2xl px-8 py-6 flex items-center gap-6 shadow-sm">
           <div className="relative w-20 h-20 shrink-0 group">
              <div className="w-20 h-20 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-white">
@@ -350,17 +350,17 @@ export default function PerfilPage() {
                        text-[13px] px-6 py-2.5 rounded-xl transition-all hover:-translate-y-0.5
                        active:scale-95 shadow-md flex items-center gap-2 shrink-0"
           >
-            {avatarStatus === "loading" ? <><ISpinner /> A enviarΓÇª</>  :
+            {avatarStatus === "loading" ? <><ISpinner /> A enviar…</>  :
              avatarStatus === "success"  ? <><ICheck />  Guardado!</>   :
              avatarFile                  ? <><ICheck className="w-3.5 h-3.5" /> Confirmar</> :
                                            <><ICamera className="w-3.5 h-3.5" /> Actualizar</>}
           </button>
         </div>
 
-        {/* Card ΓÇô Form */}
+        {/* Card – Form */}
         <div className="bg-[#dde1e7] rounded-2xl px-10 py-8 shadow-sm flex flex-col gap-6">
           <h2 className="font-black text-[20px] text-slate-900 tracking-tight text-center">
-            Trocar as informa├º├╡es do utilizador
+            Trocar as informações do utilizador
           </h2>
 
           {loadingUser ? (
@@ -417,9 +417,9 @@ export default function PerfilPage() {
                        text-white font-semibold text-[14px] py-3.5 rounded-xl
                        transition-all active:scale-[0.99] flex items-center justify-center gap-2"
           >
-            {updateStatus === "loading" ? <><ISpinner /> A actualizarΓÇª</> :
+            {updateStatus === "loading" ? <><ISpinner /> A actualizar…</> :
              updateStatus === "success"  ? <><ICheck /> Actualizado!</>   :
-             "Actualizar as Informa├º├╡es"}
+             "Actualizar as Informações"}
           </button>
 
           {/* Delete */}
@@ -441,7 +441,7 @@ export default function PerfilPage() {
       {/* Footer */}
       <footer className="bg-[#0d1b3e] h-11 flex items-center justify-center mt-auto">
         <p className="text-white/40 text-[11px] font-semibold tracking-widest uppercase">
-          ┬⌐ 2026 LocaTech ΓÇô Informa├º├úo Certa Combust├¡vel e G├ís Sem Stress
+          © 2026 LocaTech – Informação Certa Combustível e Gás Sem Stress
         </p>
       </footer>
 
@@ -457,7 +457,7 @@ export default function PerfilPage() {
 
       {confirmDelete && (
         <ConfirmDialog
-          message="Esta ac├º├úo ├⌐ irrevers├¡vel. Tens a certeza que queres excluir a tua conta?"
+          message="Esta acção é irreversível. Tens a certeza que queres excluir a tua conta?"
           onConfirm={handleDeleteAccount}
           onCancel={() => setConfirmDelete(false)}
           danger
