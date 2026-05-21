@@ -16,6 +16,7 @@ import { NotificacoesGestor } from './pages/app/dashboard/notificacoes-gestor';
 import DefinicoesDashPage from './pages/app/dashboard/dasboard-details';
 import PerfilPage from './pages/app/dashboard/perfil';
 import { EditarPosto } from './pages/app/dashboard/editar-posto';
+import { GerirPostosPage } from './pages/app/dashboard/gerir-postos';
 import { Monitoramento } from './pages/app/dashboard/monitoramento';
 import { DefinicoesGestor } from './pages/app/dashboard/definicoes-gestor'; 
 import { MonitoramentoDetalhado } from './pages/app/dashboard/monitoramento-detalhado';
@@ -70,7 +71,8 @@ export const router = createBrowserRouter([
       { path: 'monitoramento', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><Monitoramento /></ProtectedRoute> },
       { path: 'analise',       element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><MonitoramentoDetalhado /></ProtectedRoute> },
       { path: 'notificacoes', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><NotificacoesGestor /></ProtectedRoute> },
-      { path: 'editar-posto', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><EditarPosto /></ProtectedRoute> },
+      { path: 'editar-posto/:id', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><EditarPosto /></ProtectedRoute> },
+      { path: 'gerir-postos', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><GerirPostosPage /></ProtectedRoute> },
       { path: 'definicoes',   element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><DefinicoesGestor /></ProtectedRoute> },
     ],
   },
