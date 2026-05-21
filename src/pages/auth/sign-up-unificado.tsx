@@ -169,6 +169,17 @@ export function SignUpUnificado() {
             </>
           ) : "Criar Conta"}
         </button>
+
+        <p className="text-center text-sm text-white/60 mt-4">
+          Já tens conta?{" "}
+          <button
+            type="button"
+            onClick={() => navigate('/auth/login')}
+            className="font-bold text-white hover:text-[#21A301] underline underline-offset-2 transition-colors bg-transparent border-none p-0 cursor-pointer inline"
+          >
+            Fazer login
+          </button>
+        </p>
       </form>
     </motion.div>
   );
