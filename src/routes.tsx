@@ -29,24 +29,18 @@ import { SavedPostsPage } from './pages/app/dashboard/saved-posts';
 
 export const router = createBrowserRouter([
 
-  // ── Página inicial — Login ────────────────────────────────────────────────
+  // ── Landing Page (Home) ─────────────────────────────────────────────────
   {
     path: '/',
-    element: <LoginPage />,
-  },
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  {
-    path: '/auth',
     element: <AuthLayoutPacient />,
     children: [
-      { index: true,                element: <Navigate to="/auth/login" replace /> },
-      { path: 'login',             element: <LoginPage /> },
-      { path: 'landing',           element: <Home /> },
-      { path: 'select-type',       element: <SelectAccountType /> },
-      { path: 'sign-up',           element: <SignUpUnificado /> },
-      { path: 'success',           element: <SuccessAccount /> },
-      { path: 'error',             element: <ErrorAccount /> },
+      { index: true,               element: <Home /> },
+      { path: 'auth/landing',     element: <Navigate to="/" replace /> },
+      { path: 'auth/login',       element: <LoginPage /> },
+      { path: 'auth/select-type',  element: <SelectAccountType /> },
+      { path: 'auth/sign-up',      element: <SignUpUnificado /> },
+      { path: 'auth/success',      element: <SuccessAccount /> },
+      { path: 'auth/error',        element: <ErrorAccount /> },
     ],
   },
 
