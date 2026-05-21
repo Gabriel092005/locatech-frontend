@@ -4,16 +4,6 @@ import { NavLink } from "react-router-dom";
 // Icons
 // ─────────────────────────────────────────────────────────────────────────────
 
-function IUser({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-    </svg>
-  );
-}
-
 function IGrid({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none"
@@ -68,7 +58,6 @@ function ISettings({ className = "w-5 h-5" }: { className?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { to: "/gestor/perfil",       label: "Perfil",       Icon: IUser     },
   { to: "/dashboard",    label: "Dashboard",    Icon: IGrid     },
   { to: "/notificacoes", label: "Notificações", Icon: IBell     },
   { to: "/salvos",       label: "Salvos",       Icon: IBookmark },
