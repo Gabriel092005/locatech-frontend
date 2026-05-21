@@ -167,10 +167,11 @@ export default function PerfilPage() {
   const [avatarStatus, setAvatarStatus] = useState<UpdateStatus>("idle");
 
   const [form, setForm] = useState({
-    nome:     "",
-    email:    "",
-    phone:    "",
-    password: "",
+    nome:        "",
+    email:       "",
+    phone:       "",
+    oldPassword: "",
+    newPassword: "",
   });
 
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
@@ -182,10 +183,11 @@ export default function PerfilPage() {
   useEffect(() => {
     if (!user) return;
     setForm({
-      nome:     user.nome  ?? "",
-      email:    user.email ?? "",
-      phone:    user.phone ?? "",
-      password: "",
+      nome:        user.nome  ?? "",
+      email:       user.email ?? "",
+      phone:       user.phone ?? "",
+      oldPassword: "",
+      newPassword: "",
     });
   }, [user]);
 
@@ -245,12 +247,19 @@ export default function PerfilPage() {
       if (form.nome.trim()     && form.nome     !== user?.nome)  payload.nome  = form.nome.trim();
       if (form.email.trim()    && form.email    !== user?.email) payload.email = form.email.trim();
       if (form.phone.trim()    && form.phone    !== user?.phone) payload.phone = form.phone.trim();
-      if (form.password.trim())                                  payload.password = form.password.trim();
+      if (form.newPassword.trim()) {
+        if (!form.oldPassword.trim()) {
+          showToast("Preenche a palavra-passe antiga.", "error");
+          setUpdateStatus("idle");
+          return;
+        }
+        payload.oldPassword = form.oldPassword.trim();
+        payload.newPassword = form.newPassword.trim();
+      }
 
       await api.put<UserMe>("/me", payload);
-      // Invalida o cache para re-buscar os dados actualizados
       await queryClient.invalidateQueries({ queryKey: ["user-me"] });
-      setForm((prev) => ({ ...prev, password: "" }));
+      setForm((prev) => ({ ...prev, oldPassword: "", newPassword: "" }));
       setUpdateStatus("success");
       showToast("Informações actualizadas!", "success");
     } catch (err: any) {
@@ -363,10 +372,11 @@ export default function PerfilPage() {
             <div className="grid grid-cols-2 gap-4">
               {(
                 [
-                  { name: "nome",     placeholder: "Nome Completo",      type: "text"     },
-                  { name: "email",    placeholder: "E-mail",             type: "email"    },
-                  { name: "phone",    placeholder: "Contacto",           type: "tel"      },
-                  { name: "password", placeholder: "Nova Palavra-Passe", type: "password" },
+                  { name: "nome",        placeholder: "Nome Completo",         type: "text"     },
+                  { name: "email",       placeholder: "E-mail",                type: "email"    },
+                  { name: "phone",       placeholder: "Contacto",              type: "tel"      },
+                  { name: "oldPassword", placeholder: "Palavra-Passe Antiga",  type: "password" },
+                  { name: "newPassword", placeholder: "Nova Palavra-Passe",    type: "password" },
                 ] as const
               ).map(({ name, placeholder, type }) => (
                 <input
