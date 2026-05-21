@@ -29,6 +29,12 @@ import { SavedPostsPage } from './pages/app/dashboard/saved-posts';
 
 export const router = createBrowserRouter([
 
+  // ── Login (standalone, sem layout azul) ──────────────────────────────────
+  {
+    path: '/auth/login',
+    element: <LoginPage />,
+  },
+
   // ── Landing Page (Home) ─────────────────────────────────────────────────
   {
     path: '/',
@@ -36,7 +42,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true,               element: <Home /> },
       { path: 'auth/landing',     element: <Navigate to="/" replace /> },
-      { path: 'auth/login',       element: <LoginPage /> },
       { path: 'auth/select-type',  element: <SelectAccountType /> },
       { path: 'auth/sign-up',      element: <SignUpUnificado /> },
       { path: 'auth/success',      element: <SuccessAccount /> },
