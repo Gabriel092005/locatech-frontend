@@ -83,7 +83,10 @@ function postoToStation(p: PostoAPI): Station {
   };
 }
 
-function buildMapUrl(station: Station): string {
+function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number } | null, showRoute?: boolean): string {
+  if (showRoute && userLocation && station.latitude && station.longitude) {
+    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed&travelmode=driving`;
+  }
   if (station.latitude && station.longitude) {
     return `https://maps.google.com/maps?q=${station.latitude},${station.longitude}&z=15&output=embed`;
   }
@@ -91,6 +94,23 @@ function buildMapUrl(station: Station): string {
     return `https://maps.google.com/maps?q=${encodeURIComponent(station.address)}&z=14&output=embed`;
   }
   return "https://maps.google.com/maps?q=-8.8368,13.2543&z=13&output=embed";
+}
+
+function calculateRouteInfo(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  const avgSpeed = 40;
+  const timeMinutes = Math.round((distance / avgSpeed) * 60);
+  return { distance, timeMinutes };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -728,6 +748,9 @@ export default function LocaTechDashboard() {
   const [showDialog, setShowDialog]         = useState(false);
   const [showNovoPosto, setShowNovoPosto]   = useState(false);
   const [userRole, setUserRole]             = useState<string | null>(null);
+  const [userLocation, setUserLocation]     = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError]   = useState<string | null>(null);
+  const [showRoute, setShowRoute]           = useState(false);
 
   // Obter role do utilizador do token JWT
   useEffect(() => {
@@ -740,6 +763,31 @@ export default function LocaTechDashboard() {
         setUserRole(null);
       }
     }
+  }, []);
+
+  // Pedir localização ao utilizador (acionado por clique)
+  const handleRequestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError("GPS não suportado neste browser.");
+      return;
+    }
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setUserLocation({ lat: coords.latitude, lng: coords.longitude });
+        setLocationError(null);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError("Permissão de localização negada. Permite nas definições do browser.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocationError("Tempo limite excedido. Tenta novamente.");
+        } else {
+          setLocationError("Não foi possível obter a localização.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }, []);
 
   // ── Carregar todos os postos ───────────────────────────────────────────────
@@ -776,7 +824,7 @@ export default function LocaTechDashboard() {
         let raw: PostoAPI[] = [];
         try {
           const { data } = await api.get<{ postos: PostoAPI[] }>("/postos/nearby", {
-            params: { userLatitude: lat, userLongitude: lon },
+            params: { latitude: lat, longitude: lon },
           });
           raw = data.postos;
         } catch {
@@ -833,7 +881,11 @@ export default function LocaTechDashboard() {
   if (loading) return <LoadingScreen />;
   if (!selected) return <EmptyScreen onRetry={loadAll} />;
 
-  const mapUrl  = buildMapUrl(selected);
+  const podeTraçarRota = !!(userLocation && selected.latitude && selected.longitude);
+  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && podeTraçarRota);
+  const routeInfo = podeTraçarRota && showRoute
+    ? calculateRouteInfo(userLocation!.lat, userLocation!.lng, selected.latitude!, selected.longitude!)
+    : null;
   const isSaved = savedIds.has(selected.id);
 
   return (
@@ -851,6 +903,85 @@ export default function LocaTechDashboard() {
             src={mapUrl}
           />
           <MapPopup station={selected} />
+
+          {/* Rota Info Overlay */}
+          {routeInfo && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border border-white/80 flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <INavigate className="w-4 h-4 text-[#0d1b3e]" />
+                <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+              </div>
+              <div className="w-px h-5 bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <IClock className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-bold text-slate-900">
+                  {routeInfo.timeMinutes < 60
+                    ? `${routeInfo.timeMinutes} min`
+                    : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
+                </span>
+              </div>
+              <div className="w-px h-5 bg-slate-200" />
+              <a
+                href={
+                  selected.latitude && selected.longitude
+                    ? `https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`
+                    : "#"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors"
+              >
+                Abrir no Google Maps
+              </a>
+            </div>
+          )}
+
+          {/* Localização e Rota */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5">
+            {locationError && (
+              <span className="bg-red-500/90 text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap">
+                {locationError}
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              {!userLocation ? (
+                <button
+                  onClick={handleRequestLocation}
+                  className="bg-white/95 backdrop-blur-sm rounded-full px-5 py-2.5 shadow-xl border border-white/80 text-[13px] font-bold text-slate-700 hover:bg-white transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="3" fill="currentColor" />
+                  </svg>
+                  Partilhar localização
+                </button>
+              ) : (
+                <>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-lg text-[11px] text-slate-600 font-semibold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="hidden sm:inline">Localização ativa</span>
+                  </div>
+                  {showRoute ? (
+                    <button
+                      onClick={() => setShowRoute(false)}
+                      className="bg-red-500 hover:bg-red-600 text-white backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border border-white/80 text-[13px] font-bold transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      <INavigate className="w-4 h-4" />
+                      Parar Rota
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowRoute(true)}
+                      className="bg-[#0d1b3e]/90 hover:bg-[#0d1b3e] text-white backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border border-white/80 text-[13px] font-bold transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      <INavigate className="w-4 h-4" />
+                      Traçar Rota
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── Grid cards ── */}
@@ -899,6 +1030,31 @@ export default function LocaTechDashboard() {
                 </a>
               </div>
             </div>
+
+            {/* Rota Info */}
+            {routeInfo && (
+              <div className="flex items-center gap-4 bg-white/70 rounded-xl px-4 py-2.5 mb-3 border border-slate-200/60">
+                <div className="flex items-center gap-2">
+                  <INavigate className="w-4 h-4 text-[#0d1b3e]" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Distância</span>
+                    <span className="text-sm font-black text-slate-800">{routeInfo.distance.toFixed(1)} km</span>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-slate-200" />
+                <div className="flex items-center gap-2">
+                  <IClock className="w-4 h-4 text-slate-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">ETA</span>
+                    <span className="text-sm font-black text-slate-800">
+                      {routeInfo.timeMinutes < 60
+                        ? `${routeInfo.timeMinutes} min`
+                        : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="h-px bg-slate-300/60 my-4" />
 
