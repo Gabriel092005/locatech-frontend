@@ -218,12 +218,8 @@ export default function PerfilPage() {
       
       console.log('[Frontend] Resposta upload avatar:', data);
       
-      // Invalida o cache para re-buscar o user com a nova foto
-      await queryClient.invalidateQueries({ queryKey: ["user-me"] });
-      
-      // Força recarregamento imediato do user
       const { data: userData } = await api.get<UserMe>("/me");
-      console.log('[Frontend] User após upload:', userData);
+      queryClient.setQueryData(["user-me"], userData);
       
       setAvatarFile(null);
       setPreview(null);
