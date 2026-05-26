@@ -84,10 +84,9 @@ function postoToStation(p: PostoAPI): Station {
   };
 }
 
-function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number } | null, showRoute?: boolean): string {
-  if (userLocation && station.latitude && station.longitude) {
-    const travelMode = showRoute ? "&travelmode=driving" : "";
-    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed${travelMode}`;
+function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number } | null, showRoute?: boolean, travelMode?: string): string {
+  if (showRoute && userLocation && station.latitude && station.longitude) {
+    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed&travelmode=${travelMode ?? "driving"}`;
   }
   if (station.latitude && station.longitude) {
     return `https://maps.google.com/maps?q=${station.latitude},${station.longitude}&z=15&output=embed`;
@@ -98,7 +97,9 @@ function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number
   return "https://maps.google.com/maps?q=-8.8368,13.2543&z=13&output=embed";
 }
 
-function calculateRouteInfo(lat1: number, lng1: number, lat2: number, lng2: number) {
+const SPEEDS = { driving: 40, walking: 5, bicycling: 15 } as const;
+
+function calculateRouteInfo(lat1: number, lng1: number, lat2: number, lng2: number, mode: keyof typeof SPEEDS = "driving") {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -110,9 +111,9 @@ function calculateRouteInfo(lat1: number, lng1: number, lat2: number, lng2: numb
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
-  const avgSpeed = 40;
+  const avgSpeed = SPEEDS[mode];
   const timeMinutes = Math.round((distance / avgSpeed) * 60);
-  return { distance, timeMinutes };
+  return { distance, timeMinutes, mode };
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -758,6 +759,40 @@ export default function LocaTechDashboard() {
   const [userLocation, setUserLocation]     = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError]   = useState<string | null>(null);
   const [showRoute, setShowRoute]           = useState(false);
+  const [travelMode, setTravelMode]         = useState<"driving" | "walking" | "bicycling">("driving");
+  const watchIdRef                          = useRef<number | null>(null);
+  const lastAutoKeyRef                      = useRef<string>("");
+
+  // Limpar watchPosition ao desmontar
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  // Auto‑seleccionar modo com base na distância (inteligente)
+  useEffect(() => {
+    if (userLocation && selected?.latitude && selected?.longitude) {
+      const dLat = ((selected.latitude - userLocation.lat) * Math.PI) / 180;
+      const dLng = ((selected.longitude - userLocation.lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((userLocation.lat * Math.PI) / 180) *
+          Math.cos((selected.latitude * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      const key = `${userLocation.lat.toFixed(2)}-${userLocation.lng.toFixed(2)}-${selected.id}`;
+      if (lastAutoKeyRef.current !== key) {
+        lastAutoKeyRef.current = key;
+        if (dist < 1) setTravelMode("walking");
+        else if (dist < 5) setTravelMode("bicycling");
+        else setTravelMode("driving");
+      }
+    }
+  }, [userLocation, selected?.id]);
 
   // Obter role do utilizador do token JWT
   useEffect(() => {
@@ -772,19 +807,27 @@ export default function LocaTechDashboard() {
     }
   }, []);
 
-  // Pedir localização ao utilizador (acionado por clique)
+  // Pedir localização ao utilizador — watchPosition para tracking ao vivo + auto‑nearby
   const handleRequestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("GPS não suportado neste browser.");
       return;
     }
     setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
+    setLocating(true);
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
       ({ coords }) => {
         setUserLocation({ lat: coords.latitude, lng: coords.longitude });
         setLocationError(null);
+        setLocating(false);
       },
       (err) => {
+        setLocating(false);
         if (err.code === err.PERMISSION_DENIED) {
           setLocationError("Permissão de localização negada. Permite nas definições do browser.");
         } else if (err.code === err.TIMEOUT) {
@@ -793,7 +836,7 @@ export default function LocaTechDashboard() {
           setLocationError("Não foi possível obter a localização.");
         }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     );
   }, []);
 
@@ -816,54 +859,54 @@ export default function LocaTechDashboard() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   // ── Buscar postos próximos ────────────────────────────────────────────────
+  const doNearbySearch = useCallback(async (lat: number, lon: number) => {
+    setLocating(true);
+    setGpsError(null);
+    try {
+      let raw: PostoAPI[] = [];
+      try {
+        const { data } = await api.get<{ postos: PostoAPI[] }>("/postos/nearby", {
+          params: { latitude: lat, longitude: lon },
+        });
+        raw = data.postos;
+      } catch {
+        const { data } = await api.get<PostoAPI[]>("/proximos", {
+          params: { latitude: lat, longitude: lon },
+        });
+        raw = data;
+      }
+
+      const converted = raw.map(postoToStation);
+      setNearbyStations(converted);
+      setShowDialog(true);
+
+      const first = converted.find((s) => s.latitude && s.longitude);
+      if (first) setSelected(first);
+    } catch (err: any) {
+      setGpsError(err?.response?.data?.message ?? err?.message ?? "Erro ao buscar postos.");
+    } finally {
+      setLocating(false);
+    }
+  }, []);
+
   const handleFindNearby = useCallback(() => {
+    if (userLocation) {
+      doNearbySearch(userLocation.lat, userLocation.lng);
+      return;
+    }
     if (!navigator.geolocation) {
       setGpsError("GPS não suportado neste browser.");
       return;
     }
-
-    setLocating(true);
-    setGpsError(null);
-
-    const doSearch = async (lat: number, lon: number) => {
-      try {
-        // Tenta rota /postos/nearby primeiro, cai para /proximos como fallback
-        let raw: PostoAPI[] = [];
-        try {
-          const { data } = await api.get<{ postos: PostoAPI[] }>("/postos/nearby", {
-            params: { latitude: lat, longitude: lon },
-          });
-          raw = data.postos;
-        } catch {
-          const { data } = await api.get<PostoAPI[]>("/proximos", {
-            params: { latitude: lat, longitude: lon },
-          });
-          raw = data;
-        }
-
-        const converted = raw.map(postoToStation);
-        setNearbyStations(converted);
-        setShowDialog(true);
-
-        // Seleciona o primeiro com coordenadas
-        const first = converted.find((s) => s.latitude && s.longitude);
-        if (first) setSelected(first);
-      } catch (err: any) {
-        setGpsError(err?.response?.data?.message ?? err?.message ?? "Erro ao buscar postos.");
-      } finally {
-        setLocating(false);
-      }
-    };
-
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => doSearch(coords.latitude, coords.longitude),
+      ({ coords }) => doNearbySearch(coords.latitude, coords.longitude),
       (geoErr) => {
         console.warn("GPS negado, usando coords de Luanda:", geoErr.message);
-        doSearch(-8.8368, 13.2543);
+        doNearbySearch(-8.8368, 13.2543);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, []);
+  }, [userLocation, doNearbySearch]);
 
   const handlePostoCriado = useCallback((raw: PostoAPI) => {
     const novo = postoToStation(raw);
@@ -889,9 +932,9 @@ export default function LocaTechDashboard() {
   if (!selected) return <EmptyScreen onRetry={loadAll} />;
 
   const temLocalizacao = !!(userLocation && selected.latitude && selected.longitude);
-  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && temLocalizacao);
+  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && temLocalizacao, travelMode);
   const routeInfo = temLocalizacao && showRoute
-    ? calculateRouteInfo(userLocation!.lat, userLocation!.lng, selected.latitude!, selected.longitude!)
+    ? calculateRouteInfo(userLocation!.lat, userLocation!.lng, selected.latitude!, selected.longitude!, travelMode)
     : null;
   const isSaved = savedIds.has(selected.id);
 
@@ -911,48 +954,60 @@ export default function LocaTechDashboard() {
           />
           {!showRoute && <MapPopup station={selected} />}
 
-          {/* Minha localização - badge quando localização está ativa no mapa */}
-          {userLocation && selected.latitude && selected.longitude && !showRoute && (
-            <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-3.5 py-2 shadow-xl border border-white/80 flex items-center gap-2.5 pointer-events-none">
-              <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
-              </div>
-              <div>
-                <p className="text-[12px] font-bold text-slate-800">Tu estás aqui</p>
-                <p className="text-[9px] text-slate-400 font-medium">Marcador A no mapa</p>
-              </div>
+          {/* Indicador minimalista de localização ativa */}
+          {userLocation && !showRoute && (
+            <div className="absolute top-4 left-4 z-10">
+              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-[3px] border-white shadow-lg animate-pulse" />
             </div>
           )}
 
           {/* Rota Info Overlay — só quando rota NÃO está ativa */}
           {!showRoute && routeInfo && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border border-white/80 flex items-center gap-5">
-              <div className="flex items-center gap-2">
-                <INavigate className="w-4 h-4 text-[#0d1b3e]" />
-                <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border border-white/80 flex flex-col items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                {(["driving", "walking", "bicycling"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setTravelMode(mode)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[11px] font-bold transition-all",
+                      travelMode === mode
+                        ? "bg-[#0d1b3e] text-white shadow-md"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    )}
+                  >
+                    {mode === "driving" ? "Carro" : mode === "walking" ? "A pé" : "Bicicleta"}
+                  </button>
+                ))}
               </div>
-              <div className="w-px h-5 bg-slate-200" />
-              <div className="flex items-center gap-2">
-                <IClock className="w-4 h-4 text-slate-500" />
-                <span className="text-sm font-bold text-slate-900">
-                  {routeInfo.timeMinutes < 60
-                    ? `${routeInfo.timeMinutes} min`
-                    : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
-                </span>
+              <div className="flex items-center gap-5">
+                <div className="flex items-center gap-2">
+                  <INavigate className="w-4 h-4 text-[#0d1b3e]" />
+                  <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+                </div>
+                <div className="w-px h-5 bg-slate-200" />
+                <div className="flex items-center gap-2">
+                  <IClock className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm font-bold text-slate-900">
+                    {routeInfo.timeMinutes < 60
+                      ? `${routeInfo.timeMinutes} min`
+                      : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
+                  </span>
+                </div>
+                <div className="w-px h-5 bg-slate-200" />
+                <a
+                  href={
+                    selected.latitude && selected.longitude
+                      ? `https://www.google.com/maps/dir/?api=1&travelmode=${travelMode}&destination=${selected.latitude},${selected.longitude}`
+                      : "#"
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors whitespace-nowrap"
+                >
+                  Abrir no Google Maps
+                </a>
               </div>
-              <div className="w-px h-5 bg-slate-200" />
-              <a
-                href={
-                  selected.latitude && selected.longitude
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`
-                    : "#"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors"
-              >
-                Abrir no Google Maps
-              </a>
             </div>
           )}
 
