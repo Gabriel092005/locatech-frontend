@@ -417,6 +417,18 @@ function DialogPostos({
 
 type TipoPostoEnum = "COMBUSTIVEL" | "GAS" | "MISTO";
 
+interface ProdutoCatalogo {
+  id: number;
+  nome: string;
+  unidade_medida: string;
+}
+
+interface ProdutoPreco {
+  produtoId: number;
+  nome: string;
+  preco: string;
+}
+
 interface NovoPostoForm {
   nome: string;
   email_institucional: string;
@@ -480,7 +492,16 @@ function NovoPostoDialog({
   const [form, setForm]       = useState<NovoPostoForm>(FORM_INITIAL);
   const [status, setStatus]   = useState<FormStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [catalogo, setCatalogo] = useState<ProdutoCatalogo[]>([]);
+  const [produtos, setProdutos] = useState<ProdutoPreco[]>([]);
   const fileRef               = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.get<{ produtos: ProdutoCatalogo[] }>("/produtos").then(({ data }) => {
+      setCatalogo(data.produtos || []);
+      setProdutos((data.produtos || []).map((p) => ({ produtoId: p.id, nome: p.nome, preco: "" })));
+    }).catch(() => {});
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -501,6 +522,22 @@ function NovoPostoDialog({
       }));
     });
   };
+
+  const handlePrecoChange = (produtoId: number, value: string) => {
+    setProdutos((prev) => prev.map((p) => p.produtoId === produtoId ? { ...p, preco: value } : p));
+  };
+
+  const tipoOptions: { value: TipoPostoEnum; label: string }[] = [
+    { value: "MISTO",       label: "Misto" },
+    { value: "COMBUSTIVEL", label: "Combustível" },
+    { value: "GAS",         label: "Gás" },
+  ];
+
+  const produtosVisiveis = catalogo.filter((p) => {
+    if (form.tipo === "COMBUSTIVEL") return p.nome !== "Gás";
+    if (form.tipo === "GAS") return p.nome === "Gás";
+    return true;
+  });
 
   const handleSubmit = async () => {
     if (!form.nome.trim() || !form.endereco.trim()) {
@@ -527,6 +564,24 @@ function NovoPostoDialog({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      const postoId = data.id;
+
+      // Criar stocks para produtos com preço
+      const stocksCriados = produtosVisiveis
+        .filter((p) => {
+          const prod = produtos.find((pr) => pr.produtoId === p.id);
+          return prod && prod.preco && parseFloat(prod.preco) > 0;
+        });
+
+      for (const p of stocksCriados) {
+        const prod = produtos.find((pr) => pr.produtoId === p.id)!;
+        await api.post("/stocks", {
+          postoId,
+          produtoId: p.id,
+          preco_unitario: parseFloat(prod.preco),
+        }).catch(() => {});
+      }
+
       setStatus("success");
       setTimeout(() => { onCreated(data); onClose(); }, 1200);
     } catch (err: any) {
@@ -534,12 +589,6 @@ function NovoPostoDialog({
       setErrorMsg(err?.response?.data?.message ?? err?.message ?? "Erro ao criar posto.");
     }
   };
-
-  const tipoOptions: { value: TipoPostoEnum; label: string }[] = [
-    { value: "MISTO",       label: "Misto" },
-    { value: "COMBUSTIVEL", label: "Combustível" },
-    { value: "GAS",         label: "Gás" },
-  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -638,6 +687,42 @@ function NovoPostoDialog({
                 className="bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition-all"
               />
             </div>
+          </div>
+
+          {/* Preços dos Produtos */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <IMoney className="w-4 h-4 text-slate-500" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                Preços dos Produtos
+              </label>
+            </div>
+            {produtosVisiveis.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">A carregar produtos…</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {produtosVisiveis.map((p) => {
+                  const prod = produtos.find((pr) => pr.produtoId === p.id);
+                  return (
+                    <div key={p.id} className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-slate-700 w-24 shrink-0">{p.nome}</span>
+                      <div className="flex-1 flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0,00"
+                          value={prod?.preco ?? ""}
+                          onChange={(e) => handlePrecoChange(p.id, e.target.value)}
+                          className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 transition-all"
+                        />
+                        <span className="text-[11px] font-bold text-slate-400 w-8">Kz</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Alvará */}
