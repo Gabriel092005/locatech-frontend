@@ -16,7 +16,6 @@ interface StockData {
   produtoId: number;
   nome: string;
   preco_unitario: number;
-  quantidade_atual: number;
 }
 
 interface PostoData {
@@ -33,7 +32,6 @@ interface PostoData {
     id: number;
     produtoId: number;
     preco_unitario: number;
-    quantidade_atual: number;
     produto: { id: number; nome: string; unidade_medida: string };
   }[];
 }
@@ -87,7 +85,7 @@ export function EditarPosto() {
   const [produtosDisponiveis, setProdutosDisponiveis] = useState<Produto[]>([]);
   const [novoProdutoId, setNovoProdutoId] = useState<number | ''>('');
   const [novoPreco, setNovoPreco] = useState('');
-  const [novoQuantidade, setNovoQuantidade] = useState('');
+
   const [addingStock, setAddingStock] = useState(false);
 
   // Create new product type
@@ -124,7 +122,6 @@ export function EditarPosto() {
           produtoId: s.produtoId,
           nome: s.produto.nome,
           preco_unitario: s.preco_unitario,
-          quantidade_atual: s.quantidade_atual,
         }));
         setStocks(mapped);
         setOriginalStocks(JSON.parse(JSON.stringify(mapped)));
@@ -141,9 +138,9 @@ export function EditarPosto() {
 
   // ── Stock change tracking ─────────────────────────────────────────────
 
-  function updateStock(stockId: number, field: 'preco_unitario' | 'quantidade_atual', value: number) {
+  function updateStock(stockId: number, value: number) {
     setStocks((prev) => {
-      const next = prev.map((s) => s.id === stockId ? { ...s, [field]: value } : s);
+      const next = prev.map((s) => s.id === stockId ? { ...s, preco_unitario: value } : s);
       return next;
     });
     setStocksChanged((prev) => new Set(prev).add(stockId));
@@ -153,8 +150,7 @@ export function EditarPosto() {
     const current = stocks.find((s) => s.id === stockId);
     const original = originalStocks.find((s) => s.id === stockId);
     if (!current || !original) return false;
-    return current.preco_unitario !== original.preco_unitario ||
-           current.quantidade_atual !== original.quantidade_atual;
+    return current.preco_unitario !== original.preco_unitario;
   }
 
   // ── Save posto info ───────────────────────────────────────────────────
@@ -197,11 +193,10 @@ export function EditarPosto() {
 
       await api.patch(`/stocks/${stockId}`, {
         preco_unitario: stock.preco_unitario,
-        quantidade_atual: stock.quantidade_atual,
       });
 
       setOriginalStocks((prev) =>
-        prev.map((s) => s.id === stockId ? { ...s, preco_unitario: stock.preco_unitario, quantidade_atual: stock.quantidade_atual } : s)
+        prev.map((s) => s.id === stockId ? { ...s, preco_unitario: stock.preco_unitario } : s)
       );
       setStocksChanged((prev) => { const next = new Set(prev); next.delete(stockId); return next; });
       setSuccess(`Preço de "${stock.nome}" atualizado!`);
@@ -249,7 +244,6 @@ export function EditarPosto() {
         postoId: Number(id),
         produtoId: Number(novoProdutoId),
         preco_unitario: parseFloat(novoPreco),
-        quantidade_atual: parseFloat(novoQuantidade) || 0,
       });
 
       const novo: StockData = {
@@ -257,14 +251,12 @@ export function EditarPosto() {
         produtoId: data.stock.produtoId,
         nome: produtosDisponiveis.find((p) => p.id === Number(novoProdutoId))?.nome || '',
         preco_unitario: data.stock.preco_unitario,
-        quantidade_atual: data.stock.quantidade_atual,
       };
       setStocks((prev) => [...prev, novo]);
       setOriginalStocks((prev) => [...prev, { ...novo }]);
 
       setNovoProdutoId('');
       setNovoPreco('');
-      setNovoQuantidade('');
       setSuccess(`"${novo.nome}" adicionado ao posto!`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -454,19 +446,11 @@ export function EditarPosto() {
                         {changed && <span className="text-[10px] font-bold text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">Alterado</span>}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
-                          <input type="number" step="0.01" min="0" value={stock.preco_unitario}
-                            onChange={(e) => updateStock(stock.id, 'preco_unitario', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade (L)</label>
-                          <input type="number" step="0.1" min="0" value={stock.quantidade_atual}
-                            onChange={(e) => updateStock(stock.id, 'quantidade_atual', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-all" />
-                        </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
+                        <input type="number" step="0.01" min="0" value={stock.preco_unitario}
+                          onChange={(e) => updateStock(stock.id, parseFloat(e.target.value) || 0)}
+                          className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-all" />
                       </div>
 
                       {changed && (
@@ -518,15 +502,9 @@ export function EditarPosto() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
-                      <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade</label>
-                      <input type="number" step="0.1" min="0" value={novoQuantidade} onChange={(e) => setNovoQuantidade(e.target.value)} placeholder="0" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
-                    </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
+                    <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-white border border-slate-200 focus:border-[#0d1b3e] outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
                   </div>
 
                   <button onClick={handleCriarProdutoEAdicionar} disabled={!novoProdutoNome.trim() || !novoPreco || criandoProduto}
@@ -558,15 +536,9 @@ export function EditarPosto() {
                         </select>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
-                          <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Quantidade</label>
-                          <input type="number" step="0.1" min="0" value={novoQuantidade} onChange={(e) => setNovoQuantidade(e.target.value)} placeholder="0" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
-                        </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Preço (Kz)</label>
+                        <input type="number" step="0.01" min="0" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="0.00" className="w-full bg-slate-100 border border-slate-200 focus:border-[#0d1b3e] focus:bg-white outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 transition-all" />
                       </div>
 
                       <button onClick={handleAddStock} disabled={!novoProdutoId || !novoPreco || addingStock}
