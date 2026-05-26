@@ -563,11 +563,11 @@ function NovoPostoDialog({
       if (form.horario_funcionamento) body.append("horario_funcionamento", form.horario_funcionamento.trim());
       if (form.alvara)    body.append("alvara",    form.alvara);
 
-      const { data: postoData } = await api.post<PostoAPI>("/postos", body, {
+      const { data: postoData } = await api.post<{ posto: PostoAPI }>("/postos", body, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const postoId = postoData.id;
+      const postoId = postoData.posto.id;
 
       // Criar stocks para produtos com preço
       const stocksCriados = produtosVisiveis
