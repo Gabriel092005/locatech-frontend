@@ -381,11 +381,12 @@ function DialogPostos({
                       </span>
                     )}
                   </div>
-                  {s.produtos.length > 0 && (
+                  {s.precos.length > 0 && (
                     <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      {s.produtos.slice(0, 3).map((p) => (
-                        <span key={p} className="text-[10px] font-semibold bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded-full">
-                          {p}
+                      {s.precos.slice(0, 3).map((p) => (
+                        <span key={p.produto} className="flex items-center gap-1 text-[10px] font-semibold bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded-full">
+                          {p.produto}
+                          <span className="text-[#0d1b3e] font-bold">{p.valor.toLocaleString("pt-AO")} Kz</span>
                         </span>
                       ))}
                     </div>
@@ -1299,6 +1300,15 @@ export default function LocaTechDashboard() {
                       <div className="flex flex-col min-w-0 flex-1 mr-2">
                         <span className="truncate">{s.name}</span>
                         <span className="text-[10px] font-normal opacity-60">{s.dist}</span>
+                        {s.precos.length > 0 && (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {s.precos.slice(0, 2).map((p) => (
+                              <span key={p.produto} className="text-[9px] font-semibold bg-white/60 px-1.5 py-0.5 rounded">
+                                {p.produto} {p.valor.toLocaleString("pt-AO")}Kz
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className={cn("w-1.5 h-1.5 rounded-full", s.open ? "bg-green-400" : "bg-red-400")} />
