@@ -4,7 +4,8 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { SidebarGestor } from "../app/dashboard/sidebar/SidebarGestor"; 
 import { NavBar } from "./header"; 
 import toast, { Toaster } from 'react-hot-toast';
-import { AlertTriangle, Flame } from 'lucide-react';
+import { AlertTriangle, Flame, UserPlus, Bell } from 'lucide-react';
+import { apiSocket, onConviteRecebido, onNovaNotificacao } from '../../lib/api-socket';
 
 const socket = io('http://192.168.8.84:3001');
 const SensorContext = createContext<any>(null);
@@ -154,6 +155,107 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
     });
     return () => { socket.off('monitoramento_update'); };
   }, [config, audioAlerta, location.pathname]); 
+
+  // Escuta convites e notificações em tempo real via API Socket.IO
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log("📡 Registando apiSocket com userId:", payload.id);
+        apiSocket.emit('register', payload.id);
+      } catch { console.error("❌ Erro ao descodificar JWT para socket"); }
+    }
+
+    const unsubConvite = onConviteRecebido((data) => {
+      const notificationContent = `${data.de_user.nome} convidou-o para entrar na comunidade "${data.comunidade.nome}"`;
+
+      setTemNotificacaoNova(true);
+
+      if (config.somAtivado) {
+        audioAlerta.currentTime = 0;
+        audioAlerta.play().catch(() => {});
+      }
+
+      if (Notification.permission === "granted") {
+        new Notification('📨 Convite de Comunidade', {
+          body: notificationContent,
+          icon: "/logo-icon.png"
+        });
+      }
+
+      if (location.pathname === '/dashboard/comunidade') {
+        setTemNotificacaoNova(false);
+        return;
+      }
+
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-xs w-full bg-white/95 backdrop-blur-sm shadow-2xl rounded-xl border-l-[6px] border-blue-500 flex overflow-hidden ring-1 ring-black/5 transition-all`}>
+          <div className="flex-1 p-4">
+            <div className="flex items-start">
+              <UserPlus size={20} className="text-blue-600 shrink-0" />
+              <div className="ml-4">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Convite Recebido</p>
+                <p className="text-sm font-bold text-[#001140] leading-tight">{data.de_user.nome}</p>
+                <p className="text-[12px] font-semibold text-blue-600/90 italic">Convidou-o para "{data.comunidade.nome}"</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              navigate('/dashboard/comunidade');
+              toast.dismiss();
+            }}
+            className="px-4 border-l border-gray-100 text-[10px] font-black uppercase text-[#001140] hover:bg-black/5"
+          >
+            Ver
+          </button>
+        </div>
+      ), { duration: 8000, id: 'convite-toast' });
+    });
+
+    const unsubNotif = onNovaNotificacao((data) => {
+      console.log("🔔 nova_notificacao recebida:", data.content);
+      setTemNotificacaoNova(true);
+
+      if (config.somAtivado) {
+        audioAlerta.currentTime = 0;
+        audioAlerta.play().catch(() => {});
+      }
+
+      if (Notification.permission === "granted") {
+        new Notification('📢 Alteração no Posto', {
+          body: data.content,
+          icon: "/logo-icon.png",
+        });
+      }
+
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-xs w-full bg-white/95 backdrop-blur-sm shadow-2xl rounded-xl border-l-[6px] border-amber-500 flex overflow-hidden ring-1 ring-black/5 transition-all`}>
+          <div className="flex-1 p-4">
+            <div className="flex items-start">
+              <Bell size={20} className="text-amber-600 shrink-0" />
+              <div className="ml-4">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Alteração no Posto</p>
+                <p className="text-sm font-semibold text-[#001140] leading-tight">{data.content}</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => { navigate('/dashboard'); toast.dismiss(); }}
+            className="px-4 border-l border-gray-100 text-[10px] font-black uppercase text-[#001140] hover:bg-black/5"
+          >
+            Ver
+          </button>
+        </div>
+      ), { duration: 8000 });
+    });
+
+    return () => {
+      unsubConvite();
+      unsubNotif();
+    };
+  }, [config.somAtivado, audioAlerta, location.pathname, navigate]);
 
   return (
     <SensorContext.Provider value={{ dispositivos, temNotificacaoNova, setTemNotificacaoNova, config, setConfig }}>

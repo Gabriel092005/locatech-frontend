@@ -27,6 +27,7 @@ import LoginPage from './pages/app/dashboard/login';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { UnauthorizedPage } from './pages/auth/unauthorized';
 import { SavedPostsPage } from './pages/app/dashboard/saved-posts';
+import { ComunidadePage } from './pages/app/dashboard/comunidade';
 
 export const router = createBrowserRouter([
 
@@ -70,7 +71,8 @@ export const router = createBrowserRouter([
       // Rotas exclusivas para GESTOR
       { path: 'monitoramento', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><Monitoramento /></ProtectedRoute> },
       { path: 'analise',       element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><MonitoramentoDetalhado /></ProtectedRoute> },
-      { path: 'notificacoes', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><NotificacoesGestor /></ProtectedRoute> },
+      { path: 'notificacoes', element: <ProtectedRoute allowedRoles={['MEMBER', 'GESTOR', 'ADMIN']}><NotificacoesGestor /></ProtectedRoute> },
+      { path: 'comunidade', element: <ProtectedRoute allowedRoles={['MEMBER', 'GESTOR', 'ADMIN']}><ComunidadePage /></ProtectedRoute> },
       { path: 'editar-posto/:id', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><EditarPosto /></ProtectedRoute> },
       { path: 'gerir-postos', element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><GerirPostosPage /></ProtectedRoute> },
       { path: 'definicoes',   element: <ProtectedRoute allowedRoles={['GESTOR', 'ADMIN']}><DefinicoesGestor /></ProtectedRoute> },

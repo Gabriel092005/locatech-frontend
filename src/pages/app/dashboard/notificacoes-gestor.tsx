@@ -1,30 +1,46 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { AlertTriangle, Thermometer, Droplets, Flame, Gauge } from 'lucide-react';
-import { useSensores } from '../../../context/SensorContext'; 
+import { Bell, AlertTriangle, Thermometer, Droplets, Flame, Gauge, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { useSensores } from '../../../context/SensorContext';
+import { api } from '@/lib/axios';
+import { onNovaNotificacao, apiSocket } from '@/lib/api-socket';
 
-// Conexão com o backend
-const socket = io('http://192.168.8.84:3001');
+const sensorSocket = io('http://192.168.8.84:3001');
+
+interface NotifDB {
+  id: number;
+  content: string;
+  created_at: string;
+}
+
+const typeIcons: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
+  preco: { icon: Droplets, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  novo: { icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
+  atualizou: { icon: RefreshCw, color: 'text-amber-600', bg: 'bg-amber-50' },
+};
+
+function detectType(content: string) {
+  if (content.toLowerCase().includes('preço') || content.toLowerCase().includes('preco')) return typeIcons.preco;
+  if (content.toLowerCase().includes('novo')) return typeIcons.novo;
+  if (content.toLowerCase().includes('atualizou')) return typeIcons.atualizou;
+  return { icon: Bell, color: 'text-slate-600', bg: 'bg-slate-50' };
+}
 
 export function NotificacoesGestor() {
-  const { config } = useSensores(); 
+  const { config } = useSensores();
   const [alertas, setAlertas] = useState<any[]>([]);
+  const [notificacoesDB, setNotificacoesDB] = useState<NotifDB[]>([]);
+  const [activeTab, setActiveTab] = useState<'sensores' | 'sistema'>('sensores');
+  const [socketStatus, setSocketStatus] = useState(apiSocket.connected);
   const [dispositivos, setDispositivos] = useState<any>(() => {
     const salvo = localStorage.getItem('@Locatech:sensores');
     return salvo ? JSON.parse(salvo) : {};
   });
 
-  // Referência para o áudio (evita recarregar o arquivo a cada render)
   const audioAlert = useRef(new Audio('/sounds/alert.mp3'));
 
-  // --- FUNÇÃO PARA DISPARAR SOM E POP-UP EXTERNO ---
   const dispararAvisoExterno = (mensagem: string) => {
-    // 1. Tocar o Som
-    audioAlert.current.play().catch(() => {
-      console.warn("Áudio bloqueado. Clique na página para habilitar sons.");
-    });
-
-    // 2. Mostrar Notificação Nativa (Pop-up do Windows/Sistema)
+    audioAlert.current.play().catch(() => {});
     if (Notification.permission === "granted") {
       new Notification("ALERTA CRÍTICO - LOCATECH", {
         body: mensagem,
@@ -37,38 +53,34 @@ export function NotificacoesGestor() {
     if (!dados) return [];
     const novaLista: any[] = [];
 
-    // --- LÓGICA DO TANQUE A GASOLINA (ESP1) ---
     if (dados.esp1) {
       const e1 = dados.esp1;
-      if (e1.fogo) novaLista.push({ id: 'e1-f', titulo: "TANQUE A GASOLINA", mensagem: "FOGO: ACTIVO", corDestaque: "text-red-600", valorLabel: "PERIGO", corBotao: "bg-red-600", IconeSub: Flame });
-      if (e1.temp > (config.limiteTemp || 35)) novaLista.push({ id: 'e1-t', titulo: "TANQUE A GASOLINA", mensagem: `Temperatura Alta (${e1.temp.toFixed(1)}°C)`, corDestaque: "text-red-600", valorLabel: "ALERTA", corBotao: "bg-red-600", IconeSub: Thermometer });
-      if (e1.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e1-h', titulo: "TANQUE A GASOLINA", mensagem: `Humidade Crítica (${e1.humi.toFixed(1)}%)`, corDestaque: "text-amber-500", valorLabel: "ALERTA", corBotao: "bg-red-600", IconeSub: Droplets });
+      if (e1.fogo) novaLista.push({ id: 'e1-f', titulo: "Tanque Gasolina", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
+      if (e1.temp > (config.limiteTemp || 35)) novaLista.push({ id: 'e1-t', titulo: "Tanque Gasolina", mensagem: `Temperatura: ${e1.temp.toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
+      if (e1.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e1-h', titulo: "Tanque Gasolina", mensagem: `Humidade: ${e1.humi.toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
       if ((e1.stock || 0) <= (config.limiteCombustivel || 49)) {
-        novaLista.push({ id: 'e1-s', titulo: "TANQUE A GASOLINA", mensagem: "NÍVEL BAIXO", corDestaque: "text-red-600", valorLabel: `${e1.stock}L`, corBotao: "bg-red-600", IconeSub: AlertTriangle });
+        novaLista.push({ id: 'e1-s', titulo: "Tanque Gasolina", mensagem: `Stock: ${e1.stock}L`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
       }
     }
 
-    // --- LÓGICA DO STOCK LARANJA 13KG (ESP2) ---
     if (dados.esp2) {
       const e2 = dados.esp2;
-      if (e2.fogo) novaLista.push({ id: 'e2-f', titulo: "STOCK LARANJA 13KG", mensagem: "FOGO: ACTIVO", corDestaque: "text-red-600", valorLabel: "PERIGO", corBotao: "bg-red-600", IconeSub: Flame });
-      if (e2.gas) novaLista.push({ id: 'e2-g', titulo: "STOCK LARANJA 13KG", mensagem: "VAZAMENTO DE GÁS", corDestaque: "text-red-600", valorLabel: "ALERTA", corBotao: "bg-red-600", IconeSub: Gauge });
-      if (e2.temp > (config.limiteTempGas || 35)) novaLista.push({ id: 'e2-t', titulo: "STOCK LARANJA 13KG", mensagem: `Temp. Alta (${e2.temp.toFixed(1)}°C)`, corDestaque: "text-red-600", valorLabel: "ALERTA", corBotao: "bg-red-600", IconeSub: Thermometer });
-      if (e2.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e2-h', titulo: "TANQUE A GASOLINA", mensagem: `Humidade Crítica (${e2.humi.toFixed(1)}%)`, corDestaque: "text-amber-500", valorLabel: "ALERTA", corBotao: "bg-red-600", IconeSub: Droplets });
-      if (e2.stock <= (config.limiteUnidades || 10)) novaLista.push({ id: 'e2-s', titulo: "STOCK LARANJA 13KG", mensagem: "Ruptura de Stock", corDestaque: "text-red-600", valorLabel: `${e2.stock} Unid`, corBotao: "bg-red-600", IconeSub: AlertTriangle });
+      if (e2.fogo) novaLista.push({ id: 'e2-f', titulo: "Gás 13kg", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
+      if (e2.gas) novaLista.push({ id: 'e2-g', titulo: "Gás 13kg", mensagem: "VAZAMENTO DE GÁS", cor: "text-red-600", bg: "bg-red-50", Icone: Gauge, gravidade: 'crítico' });
+      if (e2.temp > (config.limiteTempGas || 35)) novaLista.push({ id: 'e2-t', titulo: "Gás 13kg", mensagem: `Temperatura: ${e2.temp.toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
+      if (e2.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e2-h', titulo: "Tanque Gasolina", mensagem: `Humidade: ${e2.humi.toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
+      if (e2.stock <= (config.limiteUnidades || 10)) novaLista.push({ id: 'e2-s', titulo: "Gás 13kg", mensagem: `Stock: ${e2.stock} unid`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
     }
     return novaLista;
   };
 
   useEffect(() => {
-    // Pedir permissão para notificações do sistema
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
-    socket.on('monitoramento_update', (novoDado: any) => {
+    sensorSocket.on('monitoramento_update', (novoDado: any) => {
       if (novoDado.id) {
-        // GATILHO DE SOM/POP-UP: Se houver fogo ou gás no dado que acabou de chegar
         if (novoDado.fogo || novoDado.gas) {
           dispararAvisoExterno(`EMERGÊNCIA: ${novoDado.fogo ? 'FOGO' : 'GÁS'} DETECTADO!`);
         }
@@ -77,7 +89,7 @@ export function NotificacoesGestor() {
           const anterior = prev[novoDado.id] || { stock: 0 };
           let stockFinal = novoDado.stock;
           if (novoDado.id === 'esp1' && novoDado.stock === 0 && anterior.stock > 0) stockFinal = anterior.stock;
-          
+
           const novoEstado = { ...prev, [novoDado.id]: { ...prev[novoDado.id], ...novoDado, stock: stockFinal } };
           localStorage.setItem('@Locatech:sensores', JSON.stringify(novoEstado));
           return novoEstado;
@@ -85,49 +97,197 @@ export function NotificacoesGestor() {
       }
     });
 
-    return () => { socket.off('monitoramento_update'); };
+    return () => { sensorSocket.off('monitoramento_update'); };
+  }, []);
+
+  useEffect(() => {
+    function fetchNotif() {
+      api.get<{ notifications: NotifDB[] }>('/notif')
+        .then((res) => setNotificacoesDB(res.data.notifications))
+        .catch(() => {});
+    }
+
+    fetchNotif();
+    const interval = setInterval(fetchNotif, 5000);
+
+    const unsub = onNovaNotificacao((data) => {
+      setNotificacoesDB((prev) => [
+        { id: Date.now(), content: data.content, created_at: data.created_at || new Date().toISOString() },
+        ...prev,
+      ]);
+    });
+
+    return () => { clearInterval(interval); unsub(); };
   }, []);
 
   useEffect(() => {
     setAlertas(gerarAlertas(dispositivos));
-  }, [dispositivos, config]); 
+  }, [dispositivos, config]);
+
+  // Estado da ligação Socket.IO (API)
+  useEffect(() => {
+    const onC = () => setSocketStatus(true);
+    const onD = () => setSocketStatus(false);
+    apiSocket.on('connect', onC);
+    apiSocket.on('disconnect', onD);
+    setSocketStatus(apiSocket.connected);
+    return () => { apiSocket.off('connect', onC); apiSocket.off('disconnect', onD); };
+  }, []);
+
+  const criticos = alertas.filter((a) => a.gravidade === 'crítico');
+  const temCritico = criticos.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden p-6 text-left">
-      <h2 className="text-gray-400 font-semibold mb-4 text-lg">Posto Etu Energies - Viana Sede</h2>
-      
-      <div className="flex flex-col h-full gap-4">
-        <div className="flex justify-center">
-          <div className="bg-[#e5e7eb] px-12 py-2 rounded-full text-gray-700 font-bold uppercase tracking-[0.25em] text-xs">
-            MONITORAMENTO GERAL
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-white overflow-hidden">
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Notificações</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Posto Etu Energies – Viana Sede</p>
           </div>
-        </div>
-
-        <div className="flex flex-col gap-3 overflow-y-auto pb-10">
-          {alertas.length > 0 ? alertas.map((alerta) => (
-            <div key={alerta.id} className="bg-[#e5e7eb] rounded-[20px] p-6 flex items-center gap-6 border border-gray-200/50 shadow-sm animate-in fade-in slide-in-from-bottom-2">
-              <div className="shrink-0 p-3 bg-white rounded-2xl shadow-inner">
-                <AlertTriangle size={32} className="text-black" />
-              </div>
-              
-              <div className="flex-1 flex flex-col items-center">
-                <h3 className="text-sm font-bold text-black uppercase tracking-wider">{alerta.titulo}</h3>
-                <span className={`text-base font-bold flex items-center gap-2 ${alerta.corDestaque}`}>
-                  <alerta.IconeSub size={20} className="text-gray-500" /> 
-                  {alerta.mensagem}
-                </span>
-              </div>
-              
-              <div className={`shrink-0 ${alerta.corBotao} text-white font-bold px-5 py-1.5 rounded-full text-xs shadow-md`}>
-                {alerta.valorLabel}
-              </div>
-            </div>
-          )) : (
-            <div className="flex flex-col items-center justify-center mt-20 opacity-40">
-              <p className="text-gray-500 font-medium">Sistemas operando dentro da normalidade.</p>
+          {temCritico && (
+            <div className="flex items-center gap-1.5 bg-red-50 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              {criticos.length} crítico(s)
             </div>
           )}
         </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Socket status */}
+            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+              socketStatus ? 'text-emerald-600 bg-emerald-50' : 'text-red-500 bg-red-50'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${socketStatus ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              {socketStatus ? 'Conectado' : 'Desconectado'}
+            </span>
+          </div>
+          {/* Tabs */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab('sensores')}
+            className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              activeTab === 'sensores'
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Sensores
+            {alertas.length > 0 && activeTab !== 'sensores' && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {alertas.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('sistema')}
+            className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              activeTab === 'sistema'
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Sistema
+            {notificacoesDB.length > 0 && activeTab !== 'sistema' && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {notificacoesDB.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
+
+        {/* ─── TAB: SENSORES ─── */}
+        {activeTab === 'sensores' && (
+          alertas.length > 0 ? alertas.map((alerta) => (
+            <div
+              key={alerta.id}
+              className={`group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                alerta.gravidade === 'crítico'
+                  ? 'bg-red-50 border-red-200'
+                  : alerta.gravidade === 'alerta'
+                  ? 'bg-orange-50 border-orange-200'
+                  : 'bg-amber-50 border-amber-200'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`shrink-0 p-2.5 rounded-xl ${
+                  alerta.gravidade === 'crítico' ? 'bg-red-100' : alerta.gravidade === 'alerta' ? 'bg-orange-100' : 'bg-amber-100'
+                }`}>
+                  <alerta.Icone size={20} className={alerta.cor} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{alerta.titulo}</p>
+                  <p className={`text-sm font-bold mt-0.5 ${alerta.cor}`}>{alerta.mensagem}</p>
+                </div>
+                <span className={`shrink-0 self-start text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+                  alerta.gravidade === 'crítico'
+                    ? 'bg-red-200 text-red-700'
+                    : alerta.gravidade === 'alerta'
+                    ? 'bg-orange-200 text-orange-700'
+                    : 'bg-amber-200 text-amber-700'
+                }`}>
+                  {alerta.gravidade}
+                </span>
+              </div>
+            </div>
+          )) : (
+            <div className="flex flex-col items-center justify-center pt-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+                <AlertTriangle size={28} className="text-emerald-400" />
+              </div>
+              <p className="text-slate-500 font-medium">Sistemas operando normalmente</p>
+              <p className="text-xs text-slate-300 mt-1">Nenhum alerta de sensor no momento</p>
+            </div>
+          )
+        )}
+
+        {/* ─── TAB: SISTEMA ─── */}
+        {activeTab === 'sistema' && (
+          notificacoesDB.length > 0 ? notificacoesDB.map((n, i) => {
+            const tipo = detectType(n.content);
+            const Icon = tipo.icon;
+            return (
+              <div
+                key={n.id}
+                className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`shrink-0 p-2.5 rounded-xl ${tipo.bg}`}>
+                    <Icon size={18} className={tipo.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 leading-relaxed">{n.content}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Clock size={11} className="text-slate-300" />
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        {new Intl.DateTimeFormat("pt-PT", {
+                          day: "2-digit", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        }).format(new Date(n.created_at))}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-200 group-hover:text-slate-400 transition-colors duration-200 shrink-0 self-center" />
+                </div>
+              </div>
+            );
+          }) : (
+            <div className="flex flex-col items-center justify-center pt-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <Bell size={28} className="text-slate-300" />
+              </div>
+              <p className="text-slate-500 font-medium">Nenhuma notificação</p>
+              <p className="text-xs text-slate-300 mt-1">As notificações do sistema aparecerão aqui</p>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
