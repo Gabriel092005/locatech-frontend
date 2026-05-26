@@ -547,7 +547,7 @@ function NovoPostoDialog({
   ];
 
   const produtosVisiveis = catalogo.filter((p) => {
-    if (form.tipo === "COMBUSTIVEL") return p.nome !== "Gás";
+    if (form.tipo === "COMBUSTIVEL") return p.nome === "Gasolina" || p.nome === "Gasóleo";
     if (form.tipo === "GAS") return p.nome === "Gás";
     return true;
   });
@@ -913,6 +913,9 @@ export default function LocaTechDashboard() {
   const [locationError, setLocationError]   = useState<string | null>(null);
   const [showRoute, setShowRoute]           = useState(false);
   const [travelMode, setTravelMode]         = useState<"driving" | "walking" | "bicycling">("driving");
+  const [locationAddress, setLocationAddress] = useState<string | null>(null);
+  const [copiedCoords, setCopiedCoords]     = useState(false);
+  const addressRef                          = useRef<string | null>(null);
   const watchIdRef                          = useRef<number | null>(null);
   const lastAutoKeyRef                      = useRef<string>("");
 
@@ -944,6 +947,19 @@ export default function LocaTechDashboard() {
       }
     }
   }, [userLocation, selected?.id]);
+
+  useEffect(() => {
+    if (!userLocation) { setLocationAddress(null); return; }
+    const key = `${userLocation.lat.toFixed(3)},${userLocation.lng.toFixed(3)}`;
+    if (addressRef.current === key) return;
+    addressRef.current = key;
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json&accept-language=pt`, {
+      headers: { "User-Agent": "LocaTech/1.0" },
+    })
+      .then((r) => r.json())
+      .then((d) => setLocationAddress(d?.display_name?.split(",").slice(0, 3).join(",") ?? null))
+      .catch(() => setLocationAddress(null));
+  }, [userLocation]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -1205,9 +1221,31 @@ export default function LocaTechDashboard() {
                 </motion.button>
               ) : (
                 <>
-                  <div className="bg-white/90 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-lg text-[11px] text-slate-600 font-semibold flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="hidden sm:inline">Localização ativa</span>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-2.5 shadow-lg text-[11px] text-slate-600 font-semibold flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 min-w-0 max-w-[90vw]">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                      <span className="text-[11px]">Localização ativa</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 font-normal w-full sm:w-auto">
+                      <motion.button
+                        onClick={() => { navigator.clipboard?.writeText(`${userLocation.lat.toFixed(5)}, ${userLocation.lng.toFixed(5)}`); setCopiedCoords(true); setTimeout(() => setCopiedCoords(false), 1500); }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-1 hover:text-blue-500 transition-colors shrink-0"
+                        title="Copiar coordenadas"
+                      >
+                        <IGps className="w-3 h-3" />
+                        {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                      </motion.button>
+                      {copiedCoords && (
+                        <span className="text-green-500 font-semibold animate-pulse" style={{ fontSize: 9 }}>Copiado!</span>
+                      )}
+                      {locationAddress && (
+                        <span className="truncate max-w-[160px] sm:max-w-[200px]" title={locationAddress}>
+                          {locationAddress}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {showRoute ? (
                     <motion.button
