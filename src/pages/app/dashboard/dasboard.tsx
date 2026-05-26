@@ -549,7 +549,7 @@ function NovoPostoDialog({
   const produtosVisiveis = catalogo.filter((p) => {
     if (form.tipo === "COMBUSTIVEL") return p.nome === "Gasolina" || p.nome === "Gasóleo";
     if (form.tipo === "GAS") return p.nome === "Gás Butano";
-    return true;
+    return p.nome !== "Gás";
   });
 
   const handleSubmit = async () => {
