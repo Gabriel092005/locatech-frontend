@@ -1,6 +1,7 @@
 import { JSX, useState, useEffect, useCallback, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
+import DashboardMap from "./dashboard-map";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,19 +83,6 @@ function postoToStation(p: PostoAPI): Station {
     latitude:  p.latitude,
     longitude: p.longitude,
   };
-}
-
-function buildMapUrl(station: Station, userLocation?: { lat: number; lng: number } | null, showRoute?: boolean, travelMode?: string): string {
-  if (showRoute && userLocation && station.latitude && station.longitude) {
-    return `https://maps.google.com/maps?saddr=${userLocation.lat},${userLocation.lng}&daddr=${station.latitude},${station.longitude}&output=embed&travelmode=${travelMode ?? "driving"}`;
-  }
-  if (station.latitude && station.longitude) {
-    return `https://maps.google.com/maps?q=${station.latitude},${station.longitude}&z=15&output=embed`;
-  }
-  if (station.address && station.address !== "Endereço não disponível") {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(station.address)}&z=14&output=embed`;
-  }
-  return "https://maps.google.com/maps?q=-8.8368,13.2543&z=13&output=embed";
 }
 
 const SPEEDS = { driving: 40, walking: 5, bicycling: 15 } as const;
@@ -278,29 +266,6 @@ function EmptyState({ text }: { text: string }) {
         <IPin className="w-5 h-5 text-slate-400" />
       </div>
       <p className="text-xs text-slate-400 font-medium">{text}</p>
-    </div>
-  );
-}
-
-// ── Map Popup ─────────────────────────────────────────────────────────────────
-
-function MapPopup({ station }: { station: Station }) {
-  return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-4 py-3 min-w-[230px] shadow-2xl border border-white/80 pointer-events-none">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-bold text-slate-900 text-sm leading-tight truncate">{station.name}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">{station.tipo}</p>
-        </div>
-        <span className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", station.open ? "bg-green-500" : "bg-red-400")} />
-      </div>
-      <div className="flex items-center gap-2 mt-2">
-        <span className="text-amber-500 font-bold text-xs">{station.rating}</span>
-        <Stars rating={station.rating} />
-      </div>
-      <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-        <IClock className="w-3 h-3" /> {station.horario}
-      </p>
     </div>
   );
 }
@@ -1023,8 +988,7 @@ export default function LocaTechDashboard() {
   if (!selected) return <EmptyScreen onRetry={loadAll} />;
 
   const temLocalizacao = !!(userLocation && selected.latitude && selected.longitude);
-  const mapUrl  = buildMapUrl(selected, userLocation, showRoute && temLocalizacao, travelMode);
-  const routeInfo = temLocalizacao && showRoute
+  const routeInfo = temLocalizacao
     ? calculateRouteInfo(userLocation!.lat, userLocation!.lng, selected.latitude!, selected.longitude!, travelMode)
     : null;
   const isSaved = savedIds.has(selected.id);
@@ -1034,79 +998,75 @@ export default function LocaTechDashboard() {
       <main className="flex-1 overflow-y-auto flex flex-col">
 
         {/* ── Mapa ── */}
-        <div className="relative h-[360px] shrink-0 bg-slate-200">
-          <iframe
-            key={mapUrl}
-            title="mapa"
-            className="w-full h-full border-0 block"
-            loading="lazy"
-            allowFullScreen
-            src={mapUrl}
-          />
-          {!showRoute && <MapPopup station={selected} />}
+        <div className="relative h-[360px] shrink-0 bg-slate-200 overflow-hidden">
+          <div className="absolute inset-0 z-0">
+            <DashboardMap
+              stations={allStations.filter((s) => s.latitude != null && s.longitude != null)}
+              selectedId={selected.id}
+              onSelect={(s) => setSelected(s)}
+              userLocation={userLocation}
+              showRoute={showRoute}
+              travelMode={travelMode}
+            />
+          </div>
 
-          {/* Indicador minimalista de localização ativa */}
-          {userLocation && !showRoute && (
-            <div className="absolute top-4 left-4 z-10">
-              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-[3px] border-white shadow-lg animate-pulse" />
-            </div>
-          )}
-
-          {/* Rota Info Overlay — só quando rota NÃO está ativa */}
-          {!showRoute && routeInfo && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border border-white/80 flex flex-col items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                {(["driving", "walking", "bicycling"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setTravelMode(mode)}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-[11px] font-bold transition-all",
-                      travelMode === mode
-                        ? "bg-[#0d1b3e] text-white shadow-md"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                    )}
+          {/* Rota Info Overlay — visível sempre que há localização */}
+          {routeInfo && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 min-w-[320px]">
+              {showRoute && (
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 bg-green-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-lg whitespace-nowrap">
+                  Rota ativa
+                </div>
+              )}
+              <div className={cn(
+                "bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border-2 transition-all",
+                showRoute ? "border-green-400 shadow-green-500/20" : "border-white/80"
+              )}>
+                <div className="flex items-center gap-1.5 mb-2">
+                  {(["driving", "walking", "bicycling"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setTravelMode(mode)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[11px] font-bold transition-all",
+                        travelMode === mode
+                          ? "bg-[#0d1b3e] text-white shadow-md"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      )}
+                    >
+                      {mode === "driving" ? "Carro" : mode === "walking" ? "A pé" : "Bicicleta"}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-2">
+                    <INavigate className="w-4 h-4 text-[#0d1b3e]" />
+                    <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-200" />
+                  <div className="flex items-center gap-2">
+                    <IClock className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-bold text-slate-900">
+                      {routeInfo.timeMinutes < 60
+                        ? `${routeInfo.timeMinutes} min`
+                        : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
+                    </span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-200" />
+                  <a
+                    href={
+                      selected.latitude && selected.longitude
+                        ? `https://www.google.com/maps/dir/?api=1&travelmode=${travelMode}&destination=${selected.latitude},${selected.longitude}`
+                        : "#"
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors whitespace-nowrap"
                   >
-                    {mode === "driving" ? "Carro" : mode === "walking" ? "A pé" : "Bicicleta"}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-5">
-                <div className="flex items-center gap-2">
-                  <INavigate className="w-4 h-4 text-[#0d1b3e]" />
-                  <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+                    Abrir no Google Maps
+                  </a>
                 </div>
-                <div className="w-px h-5 bg-slate-200" />
-                <div className="flex items-center gap-2">
-                  <IClock className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-bold text-slate-900">
-                    {routeInfo.timeMinutes < 60
-                      ? `${routeInfo.timeMinutes} min`
-                      : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
-                  </span>
-                </div>
-                <div className="w-px h-5 bg-slate-200" />
-                <a
-                  href={
-                    selected.latitude && selected.longitude
-                      ? `https://www.google.com/maps/dir/?api=1&travelmode=${travelMode}&destination=${selected.latitude},${selected.longitude}`
-                      : "#"
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors whitespace-nowrap"
-                >
-                  Abrir no Google Maps
-                </a>
               </div>
-            </div>
-          )}
-
-          {/* Rota Info — badge minimalista no canto quando rota ativa */}
-          {showRoute && routeInfo && (
-            <div className="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 pointer-events-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              Rota ativa · {routeInfo.distance.toFixed(1)} km
             </div>
           )}
 
