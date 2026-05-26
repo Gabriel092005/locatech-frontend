@@ -498,9 +498,11 @@ function NovoPostoDialog({
 
   useEffect(() => {
     api.get<{ produtos: ProdutoCatalogo[] }>("/produtos").then(({ data }) => {
-      setCatalogo(data.produtos || []);
-      setProdutos((data.produtos || []).map((p) => ({ produtoId: p.id, nome: p.nome, preco: "" })));
-    }).catch(() => {});
+      if (data?.produtos?.length) {
+        setCatalogo(data.produtos);
+        setProdutos(data.produtos.map((p) => ({ produtoId: p.id, nome: p.nome, preco: "" })));
+      }
+    }).catch((err) => console.error("Erro ao carregar produtos:", err));
   }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -560,11 +562,11 @@ function NovoPostoDialog({
       if (form.horario_funcionamento) body.append("horario_funcionamento", form.horario_funcionamento.trim());
       if (form.alvara)    body.append("alvara",    form.alvara);
 
-      const { data } = await api.post<PostoAPI>("/postos", body, {
+      const { data: postoData } = await api.post<PostoAPI>("/postos", body, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const postoId = data.id;
+      const postoId = postoData.id;
 
       // Criar stocks para produtos com preço
       const stocksCriados = produtosVisiveis
@@ -573,17 +575,20 @@ function NovoPostoDialog({
           return prod && prod.preco && parseFloat(prod.preco) > 0;
         });
 
-      for (const p of stocksCriados) {
+      await Promise.all(stocksCriados.map((p) => {
         const prod = produtos.find((pr) => pr.produtoId === p.id)!;
-        await api.post("/stocks", {
+        return api.post("/stocks", {
           postoId,
           produtoId: p.id,
           preco_unitario: parseFloat(prod.preco),
-        }).catch(() => {});
-      }
+        });
+      }));
+
+      // Buscar posto completo com stocks para mostrar no dashboard
+      const { data: postoCompleto } = await api.get<{ posto: PostoAPI }>(`/postos/${postoId}`);
 
       setStatus("success");
-      setTimeout(() => { onCreated(data); onClose(); }, 1200);
+      setTimeout(() => { onCreated(postoCompleto.posto); onClose(); }, 1200);
     } catch (err: any) {
       setStatus("error");
       setErrorMsg(err?.response?.data?.message ?? err?.message ?? "Erro ao criar posto.");
