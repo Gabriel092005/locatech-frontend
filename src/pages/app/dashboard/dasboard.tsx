@@ -1,5 +1,6 @@
 import { JSX, useState, useEffect, useCallback, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/axios";
 import DashboardMap from "./dashboard-map";
 
@@ -23,8 +24,8 @@ interface PostoAPI {
   nif?: string | null;
   stocks?: StockAPI[];
   produtos?: { nome: string; preco: number; unidade: string; quantidade: number }[];
-  distance?: number; // km — rota /nearby
-  dist?: number;     // km — rota /proximos
+  distance?: number;
+  dist?: number;
 }
 
 interface Station {
@@ -43,10 +44,25 @@ interface Station {
   longitude: number | null;
 }
 
+// ── Variants ──────────────────────────────────────────────────────────────────
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.45, ease: "easeOut" },
+  }),
+};
+
+const fadeSlideUp = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function postoToStation(p: PostoAPI): Station {
-  // Suporte a ambos os formatos de stock da API (v1: produtos[], v2: stocks[])
   const precos: Station["precos"] = p.stocks
     ? p.stocks.map((s) => ({ produto: s.produto.nome, valor: s.preco_unitario }))
     : (p.produtos ?? []).map((pr) => ({ produto: pr.nome, valor: pr.preco }));
@@ -239,7 +255,12 @@ function TankRow({ tanque }: { tanque: Station["tanques"][number] }) {
     <div className="flex items-center gap-3">
       <span className="text-xs font-medium text-slate-500 w-20 shrink-0 truncate">{tanque.nome}</span>
       <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all duration-700", c.bar, c.w)} />
+        <motion.div
+          className={cn("h-full rounded-full transition-all duration-700", c.bar, c.w)}
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+        />
       </div>
       <span className={cn("text-xs font-bold w-14 text-right tabular-nums", c.text)}>
         {tanque.volume.toLocaleString("pt-AO")}L
@@ -282,10 +303,24 @@ function DialogPostos({
   onSelect: (s: Station) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col">
+      <motion.div
+        initial={{ opacity: 0, y: 80 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 80 }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
+      >
         {/* Mobile handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
@@ -306,12 +341,14 @@ function DialogPostos({
               </p>
             </div>
           </div>
-          <button
+          <motion.button
             onClick={onClose}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
             <IClose className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
 
         {/* List */}
@@ -320,9 +357,15 @@ function DialogPostos({
             <EmptyState text="Nenhum posto encontrado nesta área. Tente aumentar o raio de busca." />
           ) : (
             postos.map((s, i) => (
-              <button
+              <motion.button
                 key={s.id}
+                layout
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.04 }}
                 onClick={() => { onSelect(s); onClose(); }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 className="w-full flex items-center gap-4 bg-slate-50 hover:bg-[#0d1b3e]/5 border border-slate-100 hover:border-[#0d1b3e]/20 rounded-2xl px-4 py-3.5 text-left transition-all group"
               >
                 <div className="w-8 h-8 rounded-xl bg-[#0d1b3e] flex items-center justify-center text-white text-xs font-black shrink-0">
@@ -360,22 +403,24 @@ function DialogPostos({
                 <div className="shrink-0 text-slate-300 group-hover:text-[#0d1b3e] group-hover:translate-x-0.5 transition-all">
                   <IChevron className="w-4 h-4" />
                 </div>
-              </button>
+              </motion.button>
             ))
           )}
         </div>
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-slate-100">
-          <button
+          <motion.button
             onClick={onClose}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
             className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm font-semibold hover:bg-slate-50 transition-colors"
           >
             Fechar
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -534,7 +579,6 @@ function NovoPostoDialog({
 
       const postoId = postoData.posto.id;
 
-      // Criar stocks para produtos com preço
       const stocksCriados = produtosVisiveis
         .filter((p) => {
           const prod = produtos.find((pr) => pr.produtoId === p.id);
@@ -550,7 +594,6 @@ function NovoPostoDialog({
         });
       }));
 
-      // Buscar posto completo com stocks para mostrar no dashboard
       const { data: postoCompleto } = await api.get<{ posto: PostoAPI }>(`/postos/${postoId}`);
 
       setStatus("success");
@@ -562,10 +605,24 @@ function NovoPostoDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      <div className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+      <motion.div
+        initial={{ opacity: 0, y: 80 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 80 }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col"
+      >
         {/* Mobile handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-slate-200 rounded-full" />
@@ -582,12 +639,14 @@ function NovoPostoDialog({
               <p className="text-[11px] text-slate-400">Preencha os dados do posto</p>
             </div>
           </div>
-          <button
+          <motion.button
             onClick={onClose}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
             <IClose className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
 
         {/* Form */}
@@ -600,10 +659,11 @@ function NovoPostoDialog({
             </label>
             <div className="flex gap-2">
               {tipoOptions.map((opt) => (
-                <button
+                <motion.button
                   key={opt.value}
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, tipo: opt.value }))}
+                  whileTap={{ scale: 0.95 }}
                   className={cn(
                     "flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all border",
                     form.tipo === opt.value
@@ -612,7 +672,7 @@ function NovoPostoDialog({
                   )}
                 >
                   {opt.label}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -634,13 +694,15 @@ function NovoPostoDialog({
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                 Coordenadas GPS
               </label>
-              <button
+              <motion.button
                 type="button"
                 onClick={handleGPS}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className="flex items-center gap-1 text-[11px] font-semibold text-[#0d1b3e] hover:underline"
               >
                 <IGps className="w-3 h-3" /> Usar localização actual
-              </button>
+              </motion.button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -699,53 +761,66 @@ function NovoPostoDialog({
           {/* Alvará */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Alvará</label>
-            <button
+            <motion.button
               type="button"
               onClick={() => fileRef.current?.click()}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 border-dashed hover:border-[#0d1b3e]/40 rounded-xl px-4 py-3 text-sm transition-all text-left group"
             >
               <IUpload className="w-4 h-4 text-slate-400 group-hover:text-[#0d1b3e] transition-colors shrink-0" />
               <span className={cn("truncate text-[13px]", form.alvara ? "text-[#0d1b3e] font-semibold" : "text-slate-400")}>
                 {form.alvara ? form.alvara.name : "Clique para seleccionar ficheiro…"}
               </span>
-            </button>
+            </motion.button>
             <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFile} />
           </div>
 
           {/* Error */}
           {errorMsg && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+            >
               <p className="text-xs text-red-500 font-medium">{errorMsg}</p>
-            </div>
+            </motion.div>
           )}
 
           {/* Success */}
           {status === "success" && (
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2"
+            >
               <ICheck className="w-4 h-4 text-green-500 shrink-0" />
               <p className="text-xs text-green-600 font-semibold">Posto criado com sucesso!</p>
-            </div>
+            </motion.div>
           )}
         </div>
 
         {/* Footer actions */}
         <div className="px-5 py-4 border-t border-slate-100 flex gap-3 shrink-0">
-          <button
+          <motion.button
             onClick={onClose}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
             className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm font-semibold hover:bg-slate-50 transition-colors"
           >
             Cancelar
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={handleSubmit}
             disabled={status === "loading" || status === "success"}
+            whileTap={status === "loading" || status === "success" ? {} : { scale: 0.97 }}
             className="flex-1 py-2.5 rounded-xl bg-[#0d1b3e] hover:bg-[#162251] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-[#0d1b3e]/20"
           >
             {status === "loading" ? <><ISpinner /> A criar…</> : status === "success" ? <><ICheck /> Criado!</> : <><IPlus /> Criar Posto</>}
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -753,10 +828,20 @@ function NovoPostoDialog({
 
 function LoadingScreen() {
   return (
-    <div className="flex h-screen items-center justify-center bg-[#edf0f4] flex-col gap-3">
-      <div className="w-12 h-12 rounded-2xl bg-[#0d1b3e] flex items-center justify-center shadow-lg">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="flex h-screen items-center justify-center bg-[#edf0f4] flex-col gap-3"
+    >
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="w-12 h-12 rounded-2xl bg-[#0d1b3e] flex items-center justify-center shadow-lg"
+      >
         <IFuel className="w-6 h-6 text-white" />
-      </div>
+      </motion.div>
       <div className="flex flex-col items-center gap-1">
         <p className="text-[#0d1b3e] font-bold text-sm tracking-wide">LocaTech</p>
         <div className="flex gap-1">
@@ -769,7 +854,7 @@ function LoadingScreen() {
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -777,21 +862,33 @@ function LoadingScreen() {
 
 function EmptyScreen({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex h-screen items-center justify-center bg-[#edf0f4] flex-col gap-4 p-8 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="flex h-screen items-center justify-center bg-[#edf0f4] flex-col gap-4 p-8 text-center"
+    >
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
+        className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center"
+      >
         <IMap className="w-7 h-7 text-slate-400" />
-      </div>
+      </motion.div>
       <div>
         <p className="text-slate-700 font-bold text-sm">Nenhum posto encontrado</p>
         <p className="text-slate-400 text-xs mt-1">Não foi possível carregar os dados dos postos.</p>
       </div>
-      <button
+      <motion.button
         onClick={onRetry}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
         className="px-5 py-2 bg-[#0d1b3e] text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
       >
         Tentar novamente
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 }
 
@@ -819,7 +916,6 @@ export default function LocaTechDashboard() {
   const watchIdRef                          = useRef<number | null>(null);
   const lastAutoKeyRef                      = useRef<string>("");
 
-  // Limpar watchPosition ao desmontar
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
@@ -828,7 +924,6 @@ export default function LocaTechDashboard() {
     };
   }, []);
 
-  // Auto‑seleccionar modo com base na distância (inteligente)
   useEffect(() => {
     if (userLocation && selected?.latitude && selected?.longitude) {
       const dLat = ((selected.latitude - userLocation.lat) * Math.PI) / 180;
@@ -850,7 +945,6 @@ export default function LocaTechDashboard() {
     }
   }, [userLocation, selected?.id]);
 
-  // Obter role do utilizador do token JWT
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -863,7 +957,6 @@ export default function LocaTechDashboard() {
     }
   }, []);
 
-  // Pedir localização ao utilizador — watchPosition para tracking ao vivo + auto‑nearby
   const handleRequestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("GPS não suportado neste browser.");
@@ -896,7 +989,6 @@ export default function LocaTechDashboard() {
     );
   }, []);
 
-  // ── Carregar todos os postos ───────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -914,7 +1006,6 @@ export default function LocaTechDashboard() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Buscar postos próximos ────────────────────────────────────────────────
   const doNearbySearch = useCallback(async (lat: number, lon: number) => {
     setLocating(true);
     setGpsError(null);
@@ -1010,77 +1101,100 @@ export default function LocaTechDashboard() {
             />
           </div>
 
-          {/* Rota Info Overlay — visível sempre que há localização */}
-          {routeInfo && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 min-w-[320px]">
-              {showRoute && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 bg-green-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-lg whitespace-nowrap">
-                  Rota ativa
-                </div>
-              )}
-              <div className={cn(
-                "bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border-2 transition-all",
-                showRoute ? "border-green-400 shadow-green-500/20" : "border-white/80"
-              )}>
-                <div className="flex items-center gap-1.5 mb-2">
-                  {(["driving", "walking", "bicycling"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setTravelMode(mode)}
-                      className={cn(
-                        "px-3 py-1 rounded-full text-[11px] font-bold transition-all",
-                        travelMode === mode
-                          ? "bg-[#0d1b3e] text-white shadow-md"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                      )}
-                    >
-                      {mode === "driving" ? "Carro" : mode === "walking" ? "A pé" : "Bicicleta"}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-5">
-                  <div className="flex items-center gap-2">
-                    <INavigate className="w-4 h-4 text-[#0d1b3e]" />
-                    <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
-                  </div>
-                  <div className="w-px h-5 bg-slate-200" />
-                  <div className="flex items-center gap-2">
-                    <IClock className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-bold text-slate-900">
-                      {routeInfo.timeMinutes < 60
-                        ? `${routeInfo.timeMinutes} min`
-                        : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
-                    </span>
-                  </div>
-                  <div className="w-px h-5 bg-slate-200" />
-                  <a
-                    href={
-                      selected.latitude && selected.longitude
-                        ? `https://www.google.com/maps/dir/?api=1&travelmode=${travelMode}&destination=${selected.latitude},${selected.longitude}`
-                        : "#"
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors whitespace-nowrap"
+          {/* Rota Info Overlay */}
+          <AnimatePresence>
+            {routeInfo && (
+              <motion.div
+                key="route-info"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-20 min-w-[320px]"
+              >
+                {showRoute && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 bg-green-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-lg whitespace-nowrap"
                   >
-                    Abrir no Google Maps
-                  </a>
+                    Rota ativa
+                  </motion.div>
+                )}
+                <div className={cn(
+                  "bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border-2 transition-all",
+                  showRoute ? "border-green-400 shadow-green-500/20" : "border-white/80"
+                )}>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {(["driving", "walking", "bicycling"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setTravelMode(mode)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-[11px] font-bold transition-all",
+                          travelMode === mode
+                            ? "bg-[#0d1b3e] text-white shadow-md"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        )}
+                      >
+                        {mode === "driving" ? "Carro" : mode === "walking" ? "A pé" : "Bicicleta"}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-center gap-2">
+                      <INavigate className="w-4 h-4 text-[#0d1b3e]" />
+                      <span className="text-sm font-bold text-slate-900">{routeInfo.distance.toFixed(1)} km</span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-200" />
+                    <div className="flex items-center gap-2">
+                      <IClock className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-bold text-slate-900">
+                        {routeInfo.timeMinutes < 60
+                          ? `${routeInfo.timeMinutes} min`
+                          : `${Math.floor(routeInfo.timeMinutes / 60)}h ${routeInfo.timeMinutes % 60}min`}
+                      </span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-200" />
+                    <a
+                      href={
+                        selected.latitude && selected.longitude
+                          ? `https://www.google.com/maps/dir/?api=1&travelmode=${travelMode}&destination=${selected.latitude},${selected.longitude}`
+                          : "#"
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-red-500 hover:text-red-600 hover:underline transition-colors whitespace-nowrap"
+                    >
+                      Abrir no Google Maps
+                    </a>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Localização e Rota */}
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5">
-            {locationError && (
-              <span className="bg-red-500/90 text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-                {locationError}
-              </span>
-            )}
+            <AnimatePresence>
+              {locationError && (
+                <motion.span
+                  key="location-error"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="bg-red-500/90 text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap"
+                >
+                  {locationError}
+                </motion.span>
+              )}
+            </AnimatePresence>
             <div className="flex items-center gap-2">
               {!userLocation ? (
-                <button
+                <motion.button
                   onClick={handleRequestLocation}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   className="bg-white/95 backdrop-blur-sm rounded-full px-5 py-2.5 shadow-xl border border-white/80 text-[13px] font-bold text-slate-700 hover:bg-white transition-all active:scale-95 flex items-center gap-2"
                 >
                   <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1088,7 +1202,7 @@ export default function LocaTechDashboard() {
                     <circle cx="12" cy="12" r="3" fill="currentColor" />
                   </svg>
                   Partilhar localização
-                </button>
+                </motion.button>
               ) : (
                 <>
                   <div className="bg-white/90 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-lg text-[11px] text-slate-600 font-semibold flex items-center gap-2">
@@ -1096,21 +1210,25 @@ export default function LocaTechDashboard() {
                     <span className="hidden sm:inline">Localização ativa</span>
                   </div>
                   {showRoute ? (
-                    <button
+                    <motion.button
                       onClick={() => setShowRoute(false)}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       className="bg-red-500 hover:bg-red-600 text-white backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border border-white/80 text-[13px] font-bold transition-all active:scale-95 flex items-center gap-2"
                     >
                       <INavigate className="w-4 h-4" />
                       Parar Rota
-                    </button>
+                    </motion.button>
                   ) : (
-                    <button
+                    <motion.button
                       onClick={() => setShowRoute(true)}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       className="bg-[#0d1b3e]/90 hover:bg-[#0d1b3e] text-white backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border border-white/80 text-[13px] font-bold transition-all active:scale-95 flex items-center gap-2"
                     >
                       <INavigate className="w-4 h-4" />
                       Traçar Rota
-                    </button>
+                    </motion.button>
                   )}
                 </>
               )}
@@ -1119,10 +1237,19 @@ export default function LocaTechDashboard() {
         </div>
 
         {/* ── Grid cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5"
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
+        >
 
           {/* Card 1 – Info + Lista */}
-          <div className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <motion.div
+            custom={0}
+            variants={cardVariants}
+            className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
             {/* Station header */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex gap-3 min-w-0">
@@ -1143,16 +1270,20 @@ export default function LocaTechDashboard() {
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <button
+                <motion.button
                   onClick={() => toggleSaved(selected.id)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
                   title={isSaved ? "Remover dos guardados" : "Guardar posto"}
                 >
                   <IBookmark filled={isSaved} />
-                </button>
+                </motion.button>
                 {(userRole === 'GESTOR' || userRole === 'ADMIN') && (
-                  <button
+                  <motion.button
                     onClick={() => navigate(`/dashboard/editar-posto/${selected.id}`)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-400 hover:text-[#0d1b3e]"
                     title="Editar posto"
                   >
@@ -1160,7 +1291,7 @@ export default function LocaTechDashboard() {
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
-                  </button>
+                  </motion.button>
                 )}
                 <a
                   href={
@@ -1177,9 +1308,14 @@ export default function LocaTechDashboard() {
               </div>
             </div>
 
-            {/* Rota Info — só visível quando rota NÃO está ativa no mapa */}
+            {/* Rota Info */}
             {routeInfo && !showRoute && (
-              <div className="flex items-center gap-4 bg-white/70 rounded-xl px-4 py-2.5 mb-3 border border-slate-200/60">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-4 bg-white/70 rounded-xl px-4 py-2.5 mb-3 border border-slate-200/60 overflow-hidden"
+              >
                 <div className="flex items-center gap-2">
                   <INavigate className="w-4 h-4 text-[#0d1b3e]" />
                   <div className="flex flex-col">
@@ -1199,45 +1335,61 @@ export default function LocaTechDashboard() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             <div className="h-px bg-slate-300/60 my-4" />
 
-            {/* Botão Novo Posto - apenas para GESTOR/ADMIN */}
+            {/* Botão Novo Posto */}
             {(userRole === 'GESTOR' || userRole === 'ADMIN') && (
-              <button
+              <motion.button
                 onClick={() => setShowNovoPosto(true)}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 className="flex items-center justify-center gap-2 w-full py-3 mb-2 bg-white/70 hover:bg-white border border-slate-300/60 text-slate-700 text-[13px] font-bold rounded-full transition-all active:scale-95 shadow-sm"
               >
                 <IPlus className="w-4 h-4" /> Adicionar Novo Posto
-              </button>
+              </motion.button>
             )}
 
             {/* Botão GPS */}
-            <button
+            <motion.button
               onClick={handleFindNearby}
               disabled={locating}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
               className="flex items-center justify-center gap-2 w-full py-3 mb-2 bg-[#0d1b3e] hover:bg-[#162251] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[13px] font-bold rounded-full shadow-sm transition-all active:scale-95"
             >
               {locating ? <><ISpinner /> A localizar…</> : <><IGps /> Ver Postos Próximos</>}
-            </button>
+            </motion.button>
 
             {/* Re-abrir dialog */}
             {nearbyStations.length > 0 && !showDialog && (
-              <button
+              <motion.button
                 onClick={() => setShowDialog(true)}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 className="flex items-center justify-center gap-2 w-full py-2 mb-2 border border-[#0d1b3e]/25 text-[#0d1b3e] text-[12px] font-semibold rounded-full hover:bg-[#0d1b3e]/5 transition-all"
               >
                 <IMap className="w-4 h-4" />
                 Ver lista ({nearbyStations.length} postos)
-              </button>
+              </motion.button>
             )}
 
             {/* Erro GPS */}
-            {gpsError && (
-              <p className="text-[11px] text-red-400 text-center mb-2 px-1">{gpsError}</p>
-            )}
+            <AnimatePresence>
+              {gpsError && (
+                <motion.p
+                  key="gps-error"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="text-[11px] text-red-400 text-center mb-2 px-1"
+                >
+                  {gpsError}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             {/* Lista de todos os postos */}
             {allStations.length > 0 && (
@@ -1245,119 +1397,181 @@ export default function LocaTechDashboard() {
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
                   Todos os postos
                 </p>
-                <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto pr-0.5">
-                  {allStations.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelected(s)}
-                      className={cn(
-                        "flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-semibold text-left transition-all w-full border-none",
-                        selected.id === s.id
-                          ? "bg-[#0d1b3e] text-white"
-                          : "bg-white/50 text-slate-700 hover:bg-white/80"
-                      )}
-                    >
-                      <div className="flex flex-col min-w-0 flex-1 mr-2">
-                        <span className="truncate">{s.name}</span>
-                        <span className="text-[10px] font-normal opacity-60">{s.dist}</span>
-                        {s.precos.length > 0 && (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {s.precos.slice(0, 2).map((p) => (
-                              <span key={p.produto} className="text-[9px] font-semibold bg-white/60 px-1.5 py-0.5 rounded">
-                                {p.produto} {p.valor.toLocaleString("pt-AO")}Kz
-                              </span>
-                            ))}
-                          </div>
+                <motion.div
+                  layout
+                  className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto pr-0.5"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {allStations.map((s) => (
+                      <motion.button
+                        key={s.id}
+                        layout
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setSelected(s)}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className={cn(
+                          "flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-semibold text-left transition-all w-full border-none",
+                          selected.id === s.id
+                            ? "bg-[#0d1b3e] text-white"
+                            : "bg-white/50 text-slate-700 hover:bg-white/80"
                         )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={cn("w-1.5 h-1.5 rounded-full", s.open ? "bg-green-400" : "bg-red-400")} />
-                        <IChevron className="w-3.5 h-3.5" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                      >
+                        <div className="flex flex-col min-w-0 flex-1 mr-2">
+                          <span className="truncate">{s.name}</span>
+                          <span className="text-[10px] font-normal opacity-60">{s.dist}</span>
+                          {s.precos.length > 0 && (
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {s.precos.slice(0, 2).map((p) => (
+                                <span key={p.produto} className="text-[9px] font-semibold bg-white/60 px-1.5 py-0.5 rounded">
+                                  {p.produto} {p.valor.toLocaleString("pt-AO")}Kz
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={cn("w-1.5 h-1.5 rounded-full", s.open ? "bg-green-400" : "bg-red-400")} />
+                          <IChevron className="w-3.5 h-3.5" />
+                        </div>
+                      </motion.button>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Card 2 – Preços */}
-          <div className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <motion.div
+            custom={1}
+            variants={cardVariants}
+            className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
             <CardHeader Icon={IMoney} title="Preços Actuais" />
-            {selected.precos.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {selected.precos.map((p) => (
-                  <div
-                    key={p.produto}
-                    className="flex items-center justify-between bg-white/60 hover:bg-white/90 rounded-xl px-4 py-3 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <IFuel className="w-4 h-4 text-slate-400" />
-                      <span className="text-[13px] font-semibold text-slate-700">{p.produto}</span>
-                    </div>
-                    <span className="bg-[#0d1b3e]/10 text-[#0d1b3e] font-bold text-[13px] px-3 py-1 rounded-lg tabular-nums">
-                      {p.valor.toLocaleString("pt-AO")} Kz
-                    </span>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                {selected.precos.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {selected.precos.map((p) => (
+                      <motion.div
+                        key={p.produto}
+                        layout
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex items-center justify-between bg-white/60 hover:bg-white/90 rounded-xl px-4 py-3 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <IFuel className="w-4 h-4 text-slate-400" />
+                          <span className="text-[13px] font-semibold text-slate-700">{p.produto}</span>
+                        </div>
+                        <span className="bg-[#0d1b3e]/10 text-[#0d1b3e] font-bold text-[13px] px-3 py-1 rounded-lg tabular-nums">
+                          {p.valor.toLocaleString("pt-AO")} Kz
+                        </span>
+                      </motion.div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="Sem preços registados" />
-            )}
+                ) : (
+                  <EmptyState text="Sem preços registados" />
+                )}
+              </motion.div>
+            </AnimatePresence>
             <div className="h-px bg-slate-300/60 my-4" />
             <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
               <IPin /> <span className="truncate">{selected.address}</span>
             </p>
-          </div>
+          </motion.div>
 
           {/* Card 3 – Produtos */}
-          <div className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <motion.div
+            custom={2}
+            variants={cardVariants}
+            className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
             <CardHeader Icon={IBag} title="Produtos Disponíveis" />
-            {selected.produtos.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {selected.produtos.map((prod) => (
-                  <div
-                    key={prod}
-                    className="flex items-center gap-3 bg-white/60 hover:bg-white/90 rounded-xl px-4 py-2.5 transition-colors"
-                  >
-                    <ICheck className="text-green-500 w-4 h-4 shrink-0" />
-                    <span className="text-[13px] font-semibold text-slate-700">{prod}</span>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                {selected.produtos.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {selected.produtos.map((prod, idx) => (
+                      <motion.div
+                        key={prod}
+                        layout
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.25, delay: idx * 0.05 }}
+                        className="flex items-center gap-3 bg-white/60 hover:bg-white/90 rounded-xl px-4 py-2.5 transition-colors"
+                      >
+                        <ICheck className="text-green-500 w-4 h-4 shrink-0" />
+                        <span className="text-[13px] font-semibold text-slate-700">{prod}</span>
+                      </motion.div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="Sem produtos registados" />
-            )}
-          </div>
+                ) : (
+                  <EmptyState text="Sem produtos registados" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
 
           {/* Card 4 – Estoque / Tanques */}
-          <div className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <motion.div
+            custom={3}
+            variants={cardVariants}
+            className="bg-[#e4e7ec] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
             <CardHeader Icon={IBarChart} title="Disponibilidade" />
-            {selected.tanques.length > 0 ? (
-              <>
-                <div className="flex flex-col gap-3.5">
-                  {selected.tanques.map((t) => <TankRow key={t.nome} tanque={t} />)}
-                </div>
-                <div className="h-px bg-slate-300/60 my-4" />
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  {[
-                    ["bg-green-500", "Alto"],
-                    ["bg-amber-400", "Médio"],
-                    ["bg-red-500",   "Baixo"],
-                  ].map(([color, label]) => (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className={cn("w-2 h-2 rounded-full", color)} />
-                      {label}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                {selected.tanques.length > 0 ? (
+                  <>
+                    <div className="flex flex-col gap-3.5">
+                      {selected.tanques.map((t) => <TankRow key={t.nome} tanque={t} />)}
                     </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <EmptyState text="Sem dados de stock disponíveis" />
-            )}
-          </div>
+                    <div className="h-px bg-slate-300/60 my-4" />
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      {[
+                        ["bg-green-500", "Alto"],
+                        ["bg-amber-400", "Médio"],
+                        ["bg-red-500",   "Baixo"],
+                      ].map(([color, label]) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <span className={cn("w-2 h-2 rounded-full", color)} />
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <EmptyState text="Sem dados de stock disponíveis" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
 
-        </div>
+        </motion.div>
       </main>
 
       {/* Footer */}
@@ -1368,21 +1582,27 @@ export default function LocaTechDashboard() {
       </footer>
 
       {/* Dialog Novo Posto */}
-      {showNovoPosto && (
-        <NovoPostoDialog
-          onClose={() => setShowNovoPosto(false)}
-          onCreated={handlePostoCriado}
-        />
-      )}
+      <AnimatePresence>
+        {showNovoPosto && (
+          <NovoPostoDialog
+            key="novo-posto"
+            onClose={() => setShowNovoPosto(false)}
+            onCreated={handlePostoCriado}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Dialog Postos Próximos */}
-      {showDialog && (
-        <DialogPostos
-          postos={nearbyStations}
-          onClose={() => setShowDialog(false)}
-          onSelect={(s) => setSelected(s)}
-        />
-      )}
+      <AnimatePresence>
+        {showDialog && (
+          <DialogPostos
+            key="dialog-postos"
+            postos={nearbyStations}
+            onClose={() => setShowDialog(false)}
+            onSelect={(s) => setSelected(s)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
