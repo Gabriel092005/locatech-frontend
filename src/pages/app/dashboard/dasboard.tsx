@@ -1008,7 +1008,10 @@ export default function LocaTechDashboard() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get<{ postos: PostoAPI[] } | PostoAPI[]>("/postos");
+      const token = localStorage.getItem("token");
+      const role = token ? JSON.parse(atob(token.split('.')[1])).role : null;
+      const endpoint = (role === "GESTOR" || role === "ADMIN") ? "/postos/meus" : "/postos";
+      const { data } = await api.get<{ postos: PostoAPI[] } | PostoAPI[]>(endpoint);
       const raw: PostoAPI[] = Array.isArray(data) ? data : data.postos;
       const formatted = raw.map(postoToStation);
       setAllStations(formatted);
