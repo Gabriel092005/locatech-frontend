@@ -24,8 +24,8 @@ apiSocket.on('connect', () => {
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      console.log('📡 Registando apiSocket com userId:', payload.id);
-      apiSocket.emit('register', payload.id);
+      console.log('📡 Registando apiSocket com userId:', payload.sub);
+      apiSocket.emit('register', payload.sub);
     } catch {
       console.error('❌ Erro ao descodificar JWT para socket');
     }
