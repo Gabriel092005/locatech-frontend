@@ -26,11 +26,21 @@ function detectType(content: string) {
   return { icon: Bell, color: 'text-slate-600', bg: 'bg-slate-50' };
 }
 
+function getUserRole(): string | null {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1])).role;
+  } catch { return null; }
+}
+
 export function NotificacoesGestor() {
   const { config } = useSensores();
+  const userRole = getUserRole();
+  const isGestor = userRole === 'GESTOR' || userRole === 'ADMIN';
   const [alertas, setAlertas] = useState<any[]>([]);
   const [notificacoesDB, setNotificacoesDB] = useState<NotifDB[]>([]);
-  const [activeTab, setActiveTab] = useState<'sensores' | 'sistema'>('sensores');
+  const [activeTab, setActiveTab] = useState<'sensores' | 'sistema'>(isGestor ? 'sensores' : 'sistema');
   const [socketStatus, setSocketStatus] = useState(apiSocket.connected);
   const [dispositivos, setDispositivos] = useState<any>(() => {
     const salvo = localStorage.getItem('@Locatech:sensores');
@@ -175,36 +185,40 @@ export function NotificacoesGestor() {
           </div>
           {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setActiveTab('sensores')}
-            className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-              activeTab === 'sensores'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Sensores
-            {alertas.length > 0 && activeTab !== 'sensores' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {alertas.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('sistema')}
-            className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-              activeTab === 'sistema'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Sistema
-            {notificacoesDB.length > 0 && activeTab !== 'sistema' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {notificacoesDB.length}
-              </span>
-            )}
-          </button>
+          {isGestor && (
+            <button
+              onClick={() => setActiveTab('sensores')}
+              className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                activeTab === 'sensores'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Sensores
+              {alertas.length > 0 && activeTab !== 'sensores' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {alertas.length}
+                </span>
+              )}
+            </button>
+          )}
+          {!isGestor && (
+            <button
+              onClick={() => setActiveTab('sistema')}
+              className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                activeTab === 'sistema'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Sistema
+              {notificacoesDB.length > 0 && activeTab !== 'sistema' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {notificacoesDB.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
