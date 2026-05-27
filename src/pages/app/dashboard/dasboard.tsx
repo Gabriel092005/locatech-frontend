@@ -6,17 +6,6 @@ import DashboardMap from "./dashboard-map";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PostoResumo {
-  id: number;
-  nome: string;
-  tipo: string;
-  endereco: string | null;
-  horario_funcionamento: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  produtos: { id: number; nome: string; preco: number }[];
-}
-
 interface StockAPI {
   preco_unitario: number;
   quantidade?: number;
@@ -1019,33 +1008,8 @@ export default function LocaTechDashboard() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      let role: string | null = null;
-      if (token) {
-        try { role = JSON.parse(atob(token.split('.')[1])).role; } catch {}
-      }
-
-      let raw: PostoAPI[];
-      if (role === 'GESTOR') {
-        const { data } = await api.get<{ postos: PostoResumo[] }>('/postos/meus');
-        raw = data.postos.map((p) => ({
-          id: p.id,
-          nome: p.nome,
-          tipo: p.tipo,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          endereco: p.endereco ?? undefined,
-          horario_funcionamento: p.horario_funcionamento ?? undefined,
-          stocks: p.produtos?.map((pr) => ({
-            preco_unitario: pr.preco,
-            produto: { nome: pr.nome },
-          })),
-        }));
-      } else {
-        const { data } = await api.get<{ postos: PostoAPI[] } | PostoAPI[]>("/postos");
-        raw = Array.isArray(data) ? data : data.postos;
-      }
-
+      const { data } = await api.get<{ postos: PostoAPI[] } | PostoAPI[]>("/postos");
+      const raw: PostoAPI[] = Array.isArray(data) ? data : data.postos;
       const formatted = raw.map(postoToStation);
       setAllStations(formatted);
       if (formatted.length > 0 && !selected) setSelected(formatted[0]);
