@@ -34,6 +34,16 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
   }, [config]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        socket.emit('register', payload.sub);
+      } catch { console.error("❌ Erro ao descodificar JWT para socket"); }
+    }
+  }, []);
+
+  useEffect(() => {
     socket.on('monitoramento_update', (novoDado: any) => {
       if (!novoDado || !novoDado.id) return;
       setDispositivos((prev: any) => {

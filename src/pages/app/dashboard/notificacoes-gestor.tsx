@@ -75,6 +75,16 @@ export function NotificacoesGestor() {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        sensorSocket.emit('register', payload.sub);
+      } catch { console.error("❌ Erro ao descodificar JWT para socket"); }
+    }
+  }, []);
+
+  useEffect(() => {
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
