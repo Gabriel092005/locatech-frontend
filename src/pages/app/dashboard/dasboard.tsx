@@ -1093,8 +1093,41 @@ export default function LocaTechDashboard() {
     }
   };
 
+  const gestorSemPostos = !selected && allStations.length === 0 && (userRole === "GESTOR" || userRole === "ADMIN");
+
   // ── Render guards ─────────────────────────────────────────────────────────
   if (loading) return <LoadingScreen />;
+  if (gestorSemPostos) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex h-screen items-center justify-center bg-[#edf0f4] flex-col gap-4 p-8 text-center"
+      >
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
+          className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center"
+        >
+          <IMap className="w-7 h-7 text-slate-400" />
+        </motion.div>
+        <div>
+          <p className="text-slate-700 font-bold text-sm">Nenhum posto encontrado</p>
+          <p className="text-slate-400 text-xs mt-1">Ainda não tens nenhum posto registado.</p>
+        </div>
+        <motion.button
+          onClick={() => navigate('/dashboard/gerir-postos')}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          className="px-5 py-2 bg-[#0d1b3e] text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
+        >
+          Cadastrar novo posto
+        </motion.button>
+      </motion.div>
+    );
+  }
   if (!selected) return <EmptyScreen onRetry={loadAll} />;
 
   const temLocalizacao = !!(userLocation && selected.latitude && selected.longitude);
