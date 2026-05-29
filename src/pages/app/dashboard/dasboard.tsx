@@ -734,6 +734,17 @@ export default function LocaTechDashboard() {
             </div>
           </div>
         </main>
+
+        {/* Dialog Novo Posto */}
+        <AnimatePresence>
+          {showNovoPosto && (
+            <NovoPostoDialog
+              key="novo-posto"
+              onClose={() => setShowNovoPosto(false)}
+              onCreated={handlePostoCriado}
+            />
+          )}
+        </AnimatePresence>
       </div>
     );
   }
