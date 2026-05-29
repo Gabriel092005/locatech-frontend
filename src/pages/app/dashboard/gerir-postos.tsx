@@ -1,7 +1,9 @@
-import { Fuel, Edit3, MapPin, Clock, ChevronRight, Droplets, Zap, AlertCircle, Loader2 } from 'lucide-react';
+import { Fuel, Edit3, MapPin, Clock, ChevronRight, Droplets, Zap, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/axios';
+import { NovoPostoDialog } from './novo-posto-dialog';
 
 interface PostoResumo {
   id: number;
@@ -39,19 +41,36 @@ export function GerirPostosPage() {
   const [postos, setPostos] = useState<PostoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNovoPosto, setShowNovoPosto] = useState(false);
+
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  async function handleDelete(id: number, nome: string) {
+    if (!window.confirm(`Tem a certeza que deseja eliminar o posto "${nome}"?`)) return;
+    setDeleting(id);
+    try {
+      await api.delete(`/postos/${id}`);
+      setPostos((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao eliminar posto.');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function loadPostos() {
+    try {
+      const { data } = await api.get<{ postos: PostoResumo[] }>('/postos/meus');
+      setPostos(data.postos || []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Erro ao carregar postos.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { data } = await api.get<{ postos: PostoResumo[] }>('/postos/meus');
-        setPostos(data.postos || []);
-      } catch (err: any) {
-        setError(err?.response?.data?.message || 'Erro ao carregar postos.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    loadPostos();
   }, []);
 
   if (loading) {
@@ -77,18 +96,24 @@ export function GerirPostosPage() {
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="mb-8 bg-gradient-to-r from-[#0d1b3e] to-[#162251] rounded-3xl p-8 text-white shadow-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
-              <Edit3 className="w-7 h-7" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
+                <Edit3 className="w-7 h-7" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-3xl font-black">Gerir Postos</h1>
+                <p className="text-white/70 mt-1">
+                  {postos.length === 0
+                    ? 'Nenhum posto registado.'
+                    : `${postos.length} posto${postos.length !== 1 ? 's' : ''} sob a sua gestão`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-black">Gerir Postos</h1>
-              <p className="text-white/70 mt-1">
-                {postos.length === 0
-                  ? 'Nenhum posto registado.'
-                  : `${postos.length} posto${postos.length !== 1 ? 's' : ''} sob a sua gestão`}
-              </p>
-            </div>
+            <button onClick={() => setShowNovoPosto(true)}
+              className="flex items-center gap-2 shrink-0 px-5 py-2.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold rounded-full transition-all active:scale-95 border border-white/20">
+              <Plus className="w-4 h-4" /> Criar Posto
+            </button>
           </div>
         </div>
 
@@ -106,11 +131,11 @@ export function GerirPostosPage() {
             </div>
             <p className="text-slate-900 font-black text-lg">Nenhum posto encontrado</p>
             <p className="text-slate-500 mt-3 max-w-md mx-auto text-sm">
-              Os postos que criar no dashboard aparecerão aqui para gestão.
+              Clique no botão abaixo para criar o seu primeiro posto.
             </p>
-            <button onClick={() => navigate('/dashboard')}
+            <button onClick={() => setShowNovoPosto(true)}
               className="mt-6 px-6 py-2.5 bg-[#0d1b3e] text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity">
-              Ir para o Dashboard
+              <Plus className="w-4 h-4 inline mr-1" /> Criar Posto
             </button>
           </div>
         ) : (
@@ -162,7 +187,14 @@ export function GerirPostosPage() {
                       )}
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-3">
+                    <div className="shrink-0 flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(posto.id, posto.nome); }}
+                        disabled={deleting === posto.id}
+                        className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 transition-all disabled:opacity-40"
+                      >
+                        {deleting === posto.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                      </button>
                       <div className="p-2.5 rounded-xl bg-[#0d1b3e]/5 group-hover:bg-[#0d1b3e] text-[#0d1b3e] group-hover:text-white transition-all">
                         <Edit3 className="w-5 h-5" />
                       </div>
@@ -174,6 +206,34 @@ export function GerirPostosPage() {
           </div>
         )}
       </div>
+      {/* Dialog Novo Posto */}
+      <AnimatePresence>
+        {showNovoPosto && (
+          <NovoPostoDialog
+            onClose={() => setShowNovoPosto(false)}
+            onCreated={(posto) => {
+              setShowNovoPosto(false);
+              setPostos((prev) => [
+                {
+                  id: posto.id,
+                  nome: posto.nome,
+                  tipo: posto.tipo,
+                  endereco: posto.endereco ?? null,
+                  horario_funcionamento: posto.horario_funcionamento ?? null,
+                  latitude: posto.latitude,
+                  longitude: posto.longitude,
+                  produtos: (posto.stocks ?? []).map((s, i) => ({
+                    id: i,
+                    nome: s.produto.nome,
+                    preco: s.preco_unitario,
+                  })),
+                },
+                ...prev,
+              ]);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
