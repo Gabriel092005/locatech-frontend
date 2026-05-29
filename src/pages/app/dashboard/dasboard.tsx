@@ -628,6 +628,18 @@ export default function LocaTechDashboard() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      doNearbySearch(-8.8368, 13.2543);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => doNearbySearch(coords.latitude, coords.longitude),
+      () => doNearbySearch(-8.8368, 13.2543),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
+
   const doNearbySearch = useCallback(async (lat: number, lon: number) => {
     setLocating(true);
     setGpsError(null);
