@@ -118,7 +118,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: "/dashboard/notificacoes", label: "Notificações", Icon: IBell, roles: ['MEMBER', 'GESTOR', 'ADMIN'] },
   { to: "/dashboard/salvos", label: "Salvos", Icon: IBookmark, roles: ['MEMBER', 'GESTOR', 'ADMIN'] },
   { to: "/dashboard/gerir-postos", label: "Gerir Postos", Icon: IEdit, roles: ['GESTOR', 'ADMIN'] },
-  { to: "/dashboard/comunidade", label: "Comunidade", Icon: IComunidade, roles: ['MEMBER', 'GESTOR', 'ADMIN'] },
+
   { to: "/dashboard/definicoes", label: "Definições", Icon: ISettings, roles: ['GESTOR', 'ADMIN'] },
 ];
 
