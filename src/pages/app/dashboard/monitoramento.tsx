@@ -5,7 +5,7 @@ export function Monitoramento() {
   // Pegamos os dados do contexto global (SensorProvider)
   const context = useSensores();
 
-  console.log(context)
+  console.log(context);
   
   // PROTEÇÃO: Se o contexto ou dispositivos não existirem, mostra loading
   if (!context || !context.dispositivos) {
@@ -22,17 +22,17 @@ export function Monitoramento() {
 
   /**
    * Função para definir a cor do botão de estoque com base no dispositivo
-   * @param qtd Valor atual do estoque
+   * @param qtd Valor atual do estoque (Para o esp1, agora representa 0-100%)
    * @param id ID do dispositivo (esp1 ou esp2)
    */
   const getStockColor = (qtd: number, id: string) => {
     if (id === 'esp1') {
-      // Regras para Tanque A Gasolina (0-250L)
-      if (qtd <= 49) return 'bg-red-600';      // Vermelho (Crítico)
-      if (qtd <= 149) return 'bg-yellow-500';  // Amarelo (Médio)
-      return 'bg-[#1EB056]';                   // Verde (Normal)
+      // REAJUSTADO: Regras baseadas em PERCENTAGEM (0% a 100%)
+      if (qtd <= 20) return 'bg-red-600';      // Vermelho (Nível Crítico / Quase Vazio)
+      if (qtd <= 60) return 'bg-yellow-500';   // Amarelo (Nível Médio)
+      return 'bg-[#1EB056]';                   // Verde (Nível Bom / Cheio)
     } else {
-      // Regras para Stock Laranja (Unidades)
+      // Mantido: Regras para Stock Laranja (Unidades físicas do esp2)
       if (qtd <= 10) return 'bg-red-600';
       if (qtd <= 20) return 'bg-yellow-500';
       return 'bg-[#1EB056]';
@@ -82,9 +82,9 @@ export function Monitoramento() {
             </div>
           </div>
 
-          {/* BOTÃO DE ESTOQUE - DINÂMICO GASOLINA */}
+          {/* MODIFICADO: Agora exibe a percentagem (%) vinda do ESP32 */}
           <button className={`mt-12 text-white font-black py-3 px-12 rounded-full shadow-lg text-xl transition-colors duration-500 ${getStockColor(dispositivos.esp1?.stock ?? 0, 'esp1')}`}>
-            {dispositivos.esp1?.stock ?? 0}L
+            {dispositivos.esp1?.stock ?? 0}%
           </button>
         </div>
 
@@ -128,7 +128,7 @@ export function Monitoramento() {
             </div>
           </div>
 
-          {/* BOTÃO DE ESTOQUE - DINÂMICO GÁS */}
+          {/* BOTÃO DE ESTOQUE - DINÂMICO GÁS (Inalterado) */}
           <button className={`mt-12 text-white font-black py-3 px-12 rounded-full shadow-lg text-xl transition-colors duration-500 ${getStockColor(dispositivos.esp2?.stock ?? 0, 'esp2')}`}>
             {dispositivos.esp2?.stock ?? 0} Unidades
           </button>

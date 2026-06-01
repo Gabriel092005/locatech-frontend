@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Settings2, Gauge, FileText, ChevronRight, Activity, AlertTriangle 
+  Settings2, Gauge, FileText, ChevronRight, AlertTriangle 
 } from 'lucide-react';
 
 // IMPORTAÇÃO: Verifique se o caminho está correto para o seu projeto
@@ -13,14 +13,13 @@ import autoTable, { RowInput } from 'jspdf-autotable';
 export function DefinicoesGestor() {
   const context = useSensores();
 
-
-  // --- BLINDAGEM CONTRA ERRO DE NULL ---
+  // --- BLINDAGEM CONTRA ERRO DE NULL (CORRIGIDO: setConfig no fallback) ---
   const { config, setConfig, dispositivos } = context || {
     config: {
-      limiteTemp: 35, limiteHumidade: 90, limiteCombustivel: 49,
+      limiteTemp: 35, limiteHumidade: 90, limiteCombustivel: 20,
       limiteTempGas: 35, limiteHumidadeGas: 90, limiteUnidades: 10, somAtivado: true
     },
-    setConfig: () => {},
+    setConfig: () => {}, // <--- CORREÇÃO AQUI
     dispositivos: {
       esp1: { stock: 0, temp: 0, humi: 0, fogo: false },
       esp2: { stock: 0, temp: 0, humi: 0, fogo: false, gas: false }
@@ -40,11 +39,11 @@ export function DefinicoesGestor() {
     });
   };
 
-  // CORREÇÃO: Resetar apenas configurações sem deslogar o usuário
+  // CORREÇÃO: Resetar apenas configurações mantendo o padrão de 20%
   const handleResetTotal = () => {
     const configPadrao = {
       somAtivado: true,
-      limiteCombustivel: 49,
+      limiteCombustivel: 20,
       limiteTemp: 35,
       limiteHumidade: 90,
       limiteTempGas: 35,
@@ -78,13 +77,22 @@ export function DefinicoesGestor() {
     
     const colunas = ["UNIDADE", "PARÂMETRO", "VALOR ATUAL", "LIMITE", "STATUS"];
     
+    const stockEsp1 = Number(dispositivos.esp1?.stock || 0);
+    const limiteEsp1 = Number(config.limiteCombustivel || 20);
+
     const linhas: RowInput[] = [
-      ["TANQUE A", "Nível de Combustível", `${dispositivos.esp1?.stock || 0}L`, `${config.limiteCombustivel}L`, (dispositivos.esp1?.stock || 0) <= config.limiteCombustivel ? "CRÍTICO" : "NORMAL"],
+      ["TANQUE A", "Nível de Combustível", `${stockEsp1}%`, `${limiteEsp1}%`, (stockEsp1 <= limiteEsp1) ? "CRÍTICO" : "NORMAL"],
       ["TANQUE A", "Temperatura", `${dispositivos.esp1?.temp?.toFixed(1) || 0}°C`, `${config.limiteTemp}°C`, (dispositivos.esp1?.temp || 0) > config.limiteTemp ? "ALTA" : "NORMAL"],
       ["TANQUE A", "Humidade", `${dispositivos.esp1?.humi?.toFixed(1) || 0}%`, `${config.limiteHumidade}%`, (dispositivos.esp1?.humi || 0) > config.limiteHumidade ? "ALTA" : "NORMAL"],
       ["TANQUE A", "Segurança (Fogo)", dispositivos.esp1?.fogo ? "DETECTADO" : "INACTIVO", "-", dispositivos.esp1?.fogo ? "PERIGO" : "NORMAL"],
       
-      [{ content: '', colSpan: 5, styles: { fillColor: [245, 245, 245] as [number, number, number] } }],
+      [
+        { 
+          content: '', 
+          colSpan: 5, 
+          styles: { fillColor: [245, 245, 245] as [number, number, number] } 
+        }
+      ],
 
       ["STOCK LARANJA", "Qtd. Unidades", `${dispositivos.esp2?.stock || 0} Un`, `${config.limiteUnidades} Un`, (dispositivos.esp2?.stock || 0) <= config.limiteUnidades ? "BAIXO" : "NORMAL"],
       ["STOCK LARANJA", "Temperatura Gás", `${dispositivos.esp2?.temp?.toFixed(1) || 0}°C`, `${config.limiteTempGas}°C`, (dispositivos.esp2?.temp || 0) > config.limiteTempGas ? "ALTA" : "NORMAL"],
@@ -161,7 +169,7 @@ export function DefinicoesGestor() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputConfig label="Temp. Crítica (°C)" value={config.limiteTemp} onChange={(v: number) => setConfig({...config, limiteTemp: v})} onSet={() => salvarConfig('limiteTemp', config.limiteTemp)} />
                   <InputConfig label="Humidade Máx (%)" value={config.limiteHumidade} onChange={(v: number) => setConfig({...config, limiteHumidade: v})} onSet={() => salvarConfig('limiteHumidade', config.limiteHumidade)} />
-                  <InputConfig label="Nível Mínimo (L)" value={config.limiteCombustivel} onChange={(v: number) => setConfig({...config, limiteCombustivel: v})} onSet={() => salvarConfig('limiteCombustivel', config.limiteCombustivel)} />
+                  <InputConfig label="Nível Mínimo (%)" value={config.limiteCombustivel} onChange={(v: number) => setConfig({...config, limiteCombustivel: v})} onSet={() => salvarConfig('limiteCombustivel', config.limiteCombustivel)} />
                 </div>
               </div>
 
@@ -198,19 +206,6 @@ export function DefinicoesGestor() {
 
         {/* Sidebar de Sistema */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Activity size={14} /> Sistema</h2>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded border border-gray-100">
-              <span className="text-xs font-bold text-[#001140]">Alertas Sonoros</span>
-              <button 
-                onClick={() => salvarConfig('somAtivado', !config.somAtivado)} 
-                className={`w-10 h-5 rounded-full relative transition-all ${config.somAtivado ? 'bg-green-600' : 'bg-gray-300'}`}
-              >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${config.somAtivado ? 'right-1' : 'left-1'}`} />
-              </button>
-            </div>
-          </div>
-
           <div className="bg-red-50/30 border border-red-100 rounded-lg p-6">
             <h2 className="text-[10px] font-black text-red-600 uppercase mb-2">Danger Zone</h2>
             <button onClick={() => setShowResetModal(true)} className="w-full py-2 bg-white border border-red-200 text-red-600 rounded text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">Reset Total do Sistema</button>

@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Bell, AlertTriangle, Thermometer, Droplets, Flame, Gauge, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { useSensores } from '../../../context/SensorContext';
 import { api } from '@/lib/axios';
 import { onNovaNotificacao, apiSocket } from '@/lib/api-socket';
 
-const sensorSocket = io('http://192.168.8.84:3001');
+const sensorSocket = io('http://192.168.8.112:3001');
 
 interface NotifDB {
   id: number;
@@ -49,37 +49,37 @@ export function NotificacoesGestor() {
 
   const audioAlert = useRef(new Audio('/sounds/alert.mp3'));
 
-  const dispararAvisoExterno = (mensagem: string) => {
-    audioAlert.current.play().catch(() => {});
-    if (Notification.permission === "granted") {
-      new Notification("ALERTA CRÍTICO - LOCATECH", {
-        body: mensagem,
-        icon: "/logo-icon.png",
-      });
-    }
-  };
-
+  // ─── ALTERADO: IDs ESTÁTICOS PARA EVITAR DUPLICAÇÃO DE CARDS NO MAP ───
   const gerarAlertas = (dados: any) => {
     if (!dados) return [];
     const novaLista: any[] = [];
 
     if (dados.esp1) {
       const e1 = dados.esp1;
-      if (e1.fogo) novaLista.push({ id: 'e1-f', titulo: "Tanque Gasolina", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
-      if (e1.temp > (config.limiteTemp || 35)) novaLista.push({ id: 'e1-t', titulo: "Tanque Gasolina", mensagem: `Temperatura: ${e1.temp.toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
-      if (e1.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e1-h', titulo: "Tanque Gasolina", mensagem: `Humidade: ${e1.humi.toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
-      if ((e1.stock || 0) <= (config.limiteCombustivel || 49)) {
-        novaLista.push({ id: 'e1-s', titulo: "Tanque Gasolina", mensagem: `Stock: ${e1.stock}L`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
+      const stockFinal = Number(e1.stock || 0);
+
+      if (e1.fogo) novaLista.push({ id: 'e1-fogo-global', titulo: "Tanque Gasolina", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
+      if (Number(e1.temp) > (config.limiteTemp || 35)) novaLista.push({ id: 'e1-temp-global', titulo: "Tanque A Gasolina", mensagem: `Temperatura: ${Number(e1.temp).toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
+      if (Number(e1.humi) > (config.limiteHumidade || 90)) novaLista.push({ id: 'e1-humi-global', titulo: "Tanque A Gasolina", mensagem: `Humidade: ${Number(e1.humi).toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
+      
+      const limiteCombustivel = Number(config.limiteCombustivel || 20);
+      if (stockFinal >= 0 && stockFinal <= limiteCombustivel) {
+        novaLista.push({ id: 'e1-stock-global', titulo: "Tanque A Gasolina", mensagem: `Stock Crítico: ${stockFinal}%`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
       }
     }
 
     if (dados.esp2) {
       const e2 = dados.esp2;
-      if (e2.fogo) novaLista.push({ id: 'e2-f', titulo: "Gás 13kg", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
-      if (e2.gas) novaLista.push({ id: 'e2-g', titulo: "Gás 13kg", mensagem: "VAZAMENTO DE GÁS", cor: "text-red-600", bg: "bg-red-50", Icone: Gauge, gravidade: 'crítico' });
-      if (e2.temp > (config.limiteTempGas || 35)) novaLista.push({ id: 'e2-t', titulo: "Gás 13kg", mensagem: `Temperatura: ${e2.temp.toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
-      if (e2.humi > (config.limiteHumidade || 90)) novaLista.push({ id: 'e2-h', titulo: "Tanque Gasolina", mensagem: `Humidade: ${e2.humi.toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
-      if (e2.stock <= (config.limiteUnidades || 10)) novaLista.push({ id: 'e2-s', titulo: "Gás 13kg", mensagem: `Stock: ${e2.stock} unid`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
+      const stockFinalEsp2 = Number(e2.stock || 0);
+
+      if (e2.fogo) novaLista.push({ id: 'e2-fogo-global', titulo: "Gás 13kg", mensagem: "FOGO DETECTADO", cor: "text-red-600", bg: "bg-red-50", Icone: Flame, gravidade: 'crítico' });
+      if (e2.gas) novaLista.push({ id: 'e2-gas-global', titulo: "Gás 13kg", mensagem: "VAZAMENTO DE GÁS", cor: "text-red-600", bg: "bg-red-50", Icone: Gauge, gravidade: 'crítico' });
+      if (Number(e2.temp) > (config.limiteTempGas || 35)) novaLista.push({ id: 'e2-temp-global', titulo: "Gás 13kg", mensagem: `Temperatura: ${Number(e2.temp).toFixed(1)}°C`, cor: "text-orange-500", bg: "bg-orange-50", Icone: Thermometer, gravidade: 'alerta' });
+      
+      // Corrigido aqui: Estava "Tanque Gasolina" no titulo do e2.humi por engano, alterado para "Gás 13kg"
+      if (Number(e2.humi) > (config.limiteHumidadeGas || 90)) novaLista.push({ id: 'e2-humi-global', titulo: "Gás 13kg", mensagem: `Humidade: ${Number(e2.humi).toFixed(1)}%`, cor: "text-amber-500", bg: "bg-amber-50", Icone: Droplets, gravidade: 'aviso' });
+      
+      if (stockFinalEsp2 <= Number(config.limiteUnidades || 10)) novaLista.push({ id: 'e2-stock-global', titulo: "Gás 13kg", mensagem: `Stock: ${stockFinalEsp2} unid`, cor: "text-red-600", bg: "bg-red-50", Icone: AlertTriangle, gravidade: 'crítico' });
     }
     return novaLista;
   };
@@ -95,20 +95,16 @@ export function NotificacoesGestor() {
   }, []);
 
   useEffect(() => {
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
     sensorSocket.on('monitoramento_update', (novoDado: any) => {
       if (novoDado.id) {
         if (novoDado.fogo || novoDado.gas) {
-          dispararAvisoExterno(`EMERGÊNCIA: ${novoDado.fogo ? 'FOGO' : 'GÁS'} DETECTADO!`);
+          audioAlert.current.play().catch(() => {});
         }
 
         setDispositivos((prev: any) => {
           const anterior = prev[novoDado.id] || { stock: 0 };
-          let stockFinal = novoDado.stock;
-          if (novoDado.id === 'esp1' && novoDado.stock === 0 && anterior.stock > 0) stockFinal = anterior.stock;
+          let stockFinal = Number(novoDado.stock || 0);
+          if (novoDado.id === 'esp1' && stockFinal === 0 && Number(anterior.stock) > 0) stockFinal = Number(anterior.stock);
 
           const novoEstado = { ...prev, [novoDado.id]: { ...prev[novoDado.id], ...novoDado, stock: stockFinal } };
           localStorage.setItem('@Locatech:sensores', JSON.stringify(novoEstado));
@@ -144,7 +140,6 @@ export function NotificacoesGestor() {
     setAlertas(gerarAlertas(dispositivos));
   }, [dispositivos, config]);
 
-  // Estado da ligação Socket.IO (API)
   useEffect(() => {
     const onC = () => setSocketStatus(true);
     const onD = () => setSocketStatus(false);
@@ -184,44 +179,44 @@ export function NotificacoesGestor() {
             </span>
           </div>
           {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-          {isGestor && (
-            <button
-              onClick={() => setActiveTab('sensores')}
-              className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                activeTab === 'sensores'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Sensores
-              {alertas.length > 0 && activeTab !== 'sensores' && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {alertas.length}
-                </span>
-              )}
-            </button>
-          )}
-          {!isGestor && (
-            <button
-              onClick={() => setActiveTab('sistema')}
-              className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                activeTab === 'sistema'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Sistema
-              {notificacoesDB.length > 0 && activeTab !== 'sistema' && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {notificacoesDB.length}
-                </span>
-              )}
-            </button>
-          )}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+            {isGestor && (
+              <button
+                onClick={() => setActiveTab('sensores')}
+                className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'sensores'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Sensores
+                {alertas.length > 0 && activeTab !== 'sensores' && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {alertas.length}
+                  </span>
+                )}
+              </button>
+            )}
+            {!isGestor && (
+              <button
+                onClick={() => setActiveTab('sistema')}
+                className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'sistema'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Sistema
+                {notificacoesDB.length > 0 && activeTab !== 'sistema' && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {notificacoesDB.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">

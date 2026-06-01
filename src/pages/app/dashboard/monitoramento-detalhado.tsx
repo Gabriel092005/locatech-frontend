@@ -66,7 +66,10 @@ export function MonitoramentoDetalhado() {
         <CardMetrica label="Média Humidade" valor={`${humiMediaAtual}%`} cor="text-blue-600" Icon={Droplets} />
         <CardMetrica label="Estado Fogo" valor={temFogo ? "CRÍTICO" : "SEGURO"} cor={temFogo ? "text-red-600 animate-pulse" : "text-gray-400"} Icon={Flame} />
         <CardMetrica label="Status Gás" valor={temGas ? "ALERTA" : "NORMAL"} cor={temGas ? "text-red-500" : "text-green-600"} Icon={Gauge} />
-        <CardMetrica label="Total Gasolina" valor={`${dispositivos.esp1?.stock || 0}L`} cor="text-[#001140]" Icon={Fuel} />
+        
+        {/* MODIFICADO: Alterado de label "Total Gasolina" para "Nível Gasolina" e valor de L (Litros) para % (Percentagem) */}
+        <CardMetrica label="Nível Gasolina" valor={`${dispositivos.esp1?.stock || 0}%`} cor="text-[#001140]" Icon={Fuel} />
+        
         <CardMetrica label="Stock Laranja" valor={`${dispositivos.esp2?.stock || 0} Un`} cor="text-orange-500" Icon={Package} />
       </div>
 
@@ -83,7 +86,10 @@ export function MonitoramentoDetalhado() {
                 <YAxis fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip />
                 <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                <Area name="Gasolina" type="monotone" dataKey="gasolina" stroke="#001140" fill="#001140" fillOpacity={0.05} strokeWidth={3} />
+                
+                {/* MODIFICADO: Alterada a propriedade 'name' de 'Gasolina' para 'Gasolina (%)' na legenda */}
+                <Area name="Gasolina (%)" type="monotone" dataKey="gasolina" stroke="#001140" fill="#001140" fillOpacity={0.05} strokeWidth={3} />
+                
                 <Area name="Unidades Gás" type="monotone" dataKey="unidadesGas" stroke="#f97316" fill="none" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>

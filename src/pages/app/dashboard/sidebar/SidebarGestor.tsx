@@ -1,7 +1,18 @@
 import { NavLink } from "react-router-dom";
 import { useSensores } from '../../../_layouts/gestor';
 
-// Icons
+// Ícone personalizado de Alerta em SVG puro para evitar falhas de carregamento de pacotes
+function IAlertTriangle({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+}
+
+// Icons estruturais da Navegação
 function IUser({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -19,7 +30,7 @@ function IGrid({ className }: { className?: string }) {
   );
 }
 
-function IChart({ className }: { className?: string }) { // NOVO ÍCONE PARA ANÁLISE
+function IChart({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
@@ -47,56 +58,93 @@ function ISettings({ className }: { className?: string }) {
 const GESTOR_NAV_ITEMS = [
   { to: "/gestor/perfil", label: "Perfil", Icon: IUser },
   { to: "/gestor/monitoramento", label: "Dashboard", Icon: IGrid }, 
-  { to: "/gestor/analise", label: "Análise", Icon: IChart }, // <── NOVO ITEM
+  { to: "/gestor/analise", label: "Análise", Icon: IChart },
   { to: "/gestor/notificacoes", label: "Notificações", Icon: IBell }, 
   { to: "/gestor/definicoes", label: "Definições", Icon: ISettings },
 ] as const;
 
 export function SidebarGestor() {
-  const { temNotificacaoNova, setTemNotificacaoNova } = useSensores();
+  const { temNotificacaoNova, setTemNotificacaoNova, ocorrencias } = useSensores();
+
+  const totalOcorrencias = ocorrencias?.length || 0;
 
   return (
-    <div className="flex flex-col w-[280px] h-full">
+    <div className="flex flex-col w-[280px] h-full justify-between pb-6">
+      
+      <div className="flex flex-col">
+        {/* Logo Locatech */}
+        <div className="px-9 pt-10 pb-12 select-none">
+          <span className="text-white font-black text-[24px] tracking-tight">
+            Loca<span className="text-amber-400">tech</span>
+          </span>
+        </div>
 
-      {/* Logo Locatech */}
-      <div className="px-9 pt-10 pb-12 select-none">
-        <span className="text-white font-black text-[24px] tracking-tight">
-          Loca<span className="text-amber-400">tech</span>
-        </span>
+        {/* Navegação */}
+        <nav className="flex flex-col gap-2 px-4">
+          {GESTOR_NAV_ITEMS.map(({ to, label, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => { if (to === "/gestor/notificacoes") setTemNotificacaoNova(false); }}
+              className={({ isActive }) =>
+                [
+                  "flex items-center gap-4 px-5 py-[14px] rounded-2xl relative",
+                  "text-[15px] font-semibold tracking-wide transition-all duration-200",
+                  isActive
+                    ? "bg-white/[0.12] text-white shadow-lg" 
+                    : "text-white/40 hover:bg-white/[0.05] hover:text-white/70",
+                ].join(" ")
+              }
+            >
+              <div className="relative">
+                <Icon className="w-[20px] h-[20px] shrink-0" />
+                
+                {label === "Notificações" && temNotificacaoNova && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                  </span>
+                )}
+              </div>
+              
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
 
-      {/* Navegação */}
-      <nav className="flex flex-col gap-2 flex-1 px-4">
-        {GESTOR_NAV_ITEMS.map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            onClick={() => { if (to === "/gestor/notificacoes") setTemNotificacaoNova(false); }}
-            className={({ isActive }) =>
-              [
-                "flex items-center gap-4 px-5 py-[14px] rounded-2xl relative",
-                "text-[15px] font-semibold tracking-wide transition-all duration-200",
-                isActive
-                  ? "bg-white/[0.12] text-white shadow-lg" 
-                  : "text-white/40 hover:bg-white/[0.05] hover:text-white/70",
-              ].join(" ")
-            }
-          >
-            <div className="relative">
-              <Icon className="w-[20px] h-[20px] shrink-0" />
-              
-              {label === "Notificações" && temNotificacaoNova && (
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
-                </span>
-              )}
+      {/* COMPONENTE VISUAL DE ALERTA (Idêntico ao capturado no teu ecrã) */}
+      {totalOcorrencias > 0 && (
+        <div className="px-4 mt-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden border-l-4 border-l-red-600 w-full">
+            <div className="flex items-center gap-3 p-3">
+              <div className="p-1.5 bg-red-50 text-red-600 rounded-full shrink-0">
+                <IAlertTriangle className="w-[18px] h-[18px]" />
+              </div>
+              <div className="text-left">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Alerta de Sistema</h4>
+                <div className="flex items-center gap-1 my-0.5">
+                  <span className="text-sm font-black text-[#001140]">
+                    ⚠️ {totalOcorrencias} {totalOcorrencias === 1 ? 'Ocorrência' : 'Ocorrências'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-red-600 font-semibold italic leading-none">
+                  Múltiplas ações em análise.
+                </p>
+              </div>
             </div>
             
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+            <NavLink 
+              to="/gestor/notificacoes"
+              onClick={() => setTemNotificacaoNova(false)}
+              className="h-full border-l border-gray-100 px-5 text-xs font-black text-[#001140] hover:bg-gray-50 uppercase tracking-widest transition-colors flex items-center justify-center py-6 select-none"
+            >
+              Ver
+            </NavLink>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
